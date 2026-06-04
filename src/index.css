@@ -1,0 +1,171 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --radius: var(--radius);
+}
+
+@layer base {
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground overflow-hidden;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* View Transitions API */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.5s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Glassmorphism & Mesh Utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3), inset 0 0 20px rgba(255, 255, 255, 0.02);
+}
+
+.mesh-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at 50% 50%, rgba(29, 78, 216, 0.15), transparent 60%),
+    radial-gradient(circle at 80% 20%, rgba(147, 51, 234, 0.15), transparent 50%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+/* Preloader */
+#global-preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #09090b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.loader-ring {
+  width: 60px;
+  height: 60px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Assistant UI Overrides for Shadcn Aesthetic */
+.aui-thread {
+  @apply w-full h-full flex flex-col bg-transparent;
+}
+
+.aui-message-list {
+  @apply flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.aui-message-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.aui-message-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.aui-message-list::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+}
+
+.aui-message {
+  @apply max-w-[85%] rounded-2xl p-4 leading-relaxed shadow-sm;
+}
+
+.aui-message[data-role="user"] {
+  @apply bg-primary text-primary-foreground ml-auto rounded-br-sm;
+}
+
+.aui-message[data-role="assistant"] {
+  @apply bg-secondary text-secondary-foreground mr-auto rounded-bl-sm border border-white/5;
+}
+
+.aui-composer {
+  @apply p-4 bg-transparent border-t border-white/5;
+}
+
+.aui-composer-input {
+  @apply w-full bg-black/20 border border-white/10 rounded-full px-6 py-3 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all text-white placeholder:text-white/40;
+}

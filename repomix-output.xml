@@ -1,0 +1,4241 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.agents/rules/uncutstash-si.md
+.gitignore
+check.cjs
+components.json
+eslint.config.js
+index.html
+package.json
+README.md
+src/App.css
+src/App.tsx
+src/assets/hero.png
+src/assets/react.svg
+src/assets/vite.svg
+src/components/assistant-ui/attachment.tsx
+src/components/assistant-ui/markdown-text.tsx
+src/components/assistant-ui/reasoning.tsx
+src/components/assistant-ui/thread.tsx
+src/components/assistant-ui/tool-fallback.tsx
+src/components/assistant-ui/tool-group.tsx
+src/components/assistant-ui/tooltip-icon-button.tsx
+src/components/ProceduralBackground.tsx
+src/components/ui/avatar.tsx
+src/components/ui/button.tsx
+src/components/ui/collapsible.tsx
+src/components/ui/dialog.tsx
+src/components/ui/tooltip.tsx
+src/index.css
+src/lib/utils.ts
+src/main.tsx
+src/orchestrator.ts
+src/rag/pipeline.ts
+src/storage.ts
+src/workers/embeddings.worker.ts
+src/workers/inference.worker.ts
+src/workers/network.worker.ts
+src/workers/rerank.worker.ts
+src/workers/retrieval.worker.ts
+tailwind.config.js
+test-chat-screenshot.png
+test-chat.cjs
+tsconfig.app.json
+tsconfig.json
+tsconfig.node.json
+vite.config.ts
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".agents/rules/uncutstash-si.md">
+---
+trigger: always_on
+---
+
+Native execution PWA for iOS and an Electron wrapper for Android sideloading as .apk, local-only that implements "threading" to utilize multiple "web workers", meaning it runs processes on separate cores of the phone’s processor in parallel simultaneously and harnesses the power of WebGPU when available, which has become standard. Even iPhones ship with WebGPU switched on by default in with iOS 26, currently the most recent iteration of the Operating System.
+
+UI:
+Use assistant-ui+shadnc-ui+tailwind+framer motion+GSAP
+Utilize modern animations integrated with physics weights assigned.
+
+Secure Communications: P2P text, voice, and video calling handled via WebRTC RTCPeerConnection end-to-end encrypted locally on-device using Web Crypto API (AES-GCM 256-bit)
+
+Brand Integrity (Case-Sensitive): Under no circumstances may the following names be rendered in all-capital letters, even in headers:
+
+"DATAcartel Collective"
+"DATAcartel"
+"UNCUTstash"
+"GHOSTpay"
+
+STORAGE:
+Must follow this HOT/WARM/COLD storage hierarchy described below:
+
+HOT: IndexedDB recent and fast access
+
+WARM: LanceDB in OPFS (full indexed history)
+
+COLD: Encrypted cloud storage on Google Drive (We will setup cold storage later in the project but initially just start with HOT and WARM storage).
+
+INFERENCE:
+wllama+WebGPU with fallback to llama.cpp (WASM SIMD, multithreaded)
+
+EMBEDDINGS:
+Transformers.js v4 all-MiniLM-L6-v2 in separate web worker
+
+HYBRID RAG AND RETRIEVAL STRATEGY:
+
+Vector database: LanceDB (OPFS storage)
+
+Retrieval: Parallel dense (vector) and sparse (BM25) search. LanceDB has native semantic and BM25 for keyword
+
+Fusion Logic (RRF): Reciprocal Rank Fusion
+using "Score = 1 / (K+rank)" where K=60
+Reranking: Use "BGE-Reranker-v2-m3" for precision scoring with cross-encoded reranking of the top (10?) results
+
+Example of Web Worker “Threading” Distribution Across Multiple Processor Cores
+
+1 embedding
+2 wllama/llama.cpp for inference
+3 retrieval
+4 data prefetching or logging 
+
+————
+
+SANDBOX ARCHITECTURE & SECURITY ISOLATION BASELINE
+
+* **Air-Gapped Sovereign Core:** The core workspace—including the UI, unencrypted plain text prompts, local model pipelines, and the React `assistant-ui` canvas—must remain completely isolated from direct network access. Plaintext private keys and unencrypted application contexts must never be active in memory threads with open network sockets.
+
+* **Network Worker Isolation:** All external networking tasks (Signal Protocol communication syncing, WebRTC signaling streams) must be entirely isolated inside a separate background Web Worker thread.
+
+* **The Sealed Pipeline Rule:** All data passing from the Core to the Network Worker must be client-side encrypted into an opaque ciphertext block *before* transmission. Communication across the thread boundary must occur via a strict, audited `postMessage()` gateway. The network pipeline must remain completely zero-knowledge, processing only encrypted data blocks.
+
+—— 
+
+SPATIAL UI & AMBIENT INTERACTION PARADIGMS:
+
+Use assistant-ui+shadnc-ui+tailwind+framer motion+GSAP as the UI building stack.
+
+1 Unified AI Canvas: The AI workspace is the primary, non-navigable dashboard of the application. The traditional concept of a separate messaging inbox, tab, or menu screen is completely eliminated to prevent workspace navigation and context switching.
+
+2 shadcn/ui & Z-Axis Depth: Utilize shadcn/ui components customized to establish a premium, 3-dimensional visual space. Leverage stacking contexts, layered glassmorphism, dynamic transitions, and drop-shadow styling to represent a rich physical depth on the z-axis.
+
+3 The Perimeter Halo Notification: Standard intrusive banner alerts are banned. Incoming P2P messages, video calls, or sync requests trigger a single glowing light orb that appears to peek through the bezel around the edges and orbits dynamically around the absolute visual perimeter of the display like a ball of light that you can’t see but you see it’s glow.
+
+4 Contextual Materialization: Clicking or tapping the rotating perimeter orb dynamically morphs and materializes it into a floating bubble overlay on the active workspace. This bubble allows tandem, overlapping usage of the UNCUTstash AI toolsets, RAG document managers, and payment frameworks during ongoing video chats, voice calls, or typing sessions without disrupting the active background canvas.
+
+5 GHOSTpay Integration:  I already have a payment gate build to drop it as a .jsx
+
+THE PHYSICAL SECURITY ENGINE (ROSS ULBRICHT PROTOCOL):
+
+The communication layer integrates physical-endpoint operational security measures on the premise that a perfectly encrypted pipeline is useless if the devices at either end are physically compromised. You must implement:
+
+1 Attention-Aware Auto-Lock: Utilizing device camera APIs to track face and eye orientation. If the user's attention leaves the screen context, or their head completely leaves the frame, for a certain number of seconds (adjustable sensitivity must be available within the UI for fine-tuning of the sensitivity by the user), the active layout immediately locks the application and moves any unencrypted, plain text from the prompt box safely into an encrypted vault.
+
+2 Kinetic Impact Triggers: Monitoring accelerometer/motion APIs to detect high-velocity physical acceleration (e.g., the device being snatched or dropped during an altercation), instantly triggering a hard system lockdown. There needs to be a sensitivity setting that is adjustable by the user within the setting menu).
+
+3 “Shoulder-Surf” Detection: If a second set of unfamiliar eyes or shape of a second user’s head appears in the frame or view, it activates the lockdown security measure.
+
+4 Anti-Coercion Protocol: Zero biometric unlock pathways, specifically after a hard system emergency lockdown has been triggered (no Face ID, no fingerprint logins). Unlocking the secure state requires manual cognitive passcode input only—a password locked strictly in the user's mind.
+</file>
+
+<file path=".gitignore">
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+public/*
+
+check-screenshot.png
+</file>
+
+<file path="check.cjs">
+/**
+ * check.cjs
+ * Playwright headless Chromium visual verification for sovereign-rag dev server.
+ * Usage: node check.cjs
+ *
+ * Captures:
+ *  - Full-page screenshot saved to check-screenshot.png
+ *  - All browser console messages (log, warn, error)
+ *  - Any uncaught page errors / unhandled rejections
+ *  - Vite error overlay detection
+ *  - Network requests that returned 4xx/5xx
+ */
+
+const { chromium } = require('playwright');
+const path = require('path');
+const fs = require('fs');
+
+const DEV_URL = 'http://localhost:5173';
+const SCREENSHOT_PATH = path.join(__dirname, 'check-screenshot.png');
+const WAIT_MS = 6000; // give the React app + GSAP preloader time to render
+
+(async () => {
+  console.log('\n🔍 sovereign-rag — Playwright Headless Check');
+  console.log('━'.repeat(50));
+
+  const browser = await chromium.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-web-security',   // allow COEP/COOP headers locally
+      '--disable-features=IsolateOrigins,site-per-process',
+    ],
+  });
+
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    // Must match the COEP/COOP headers Vite sends
+    bypassCSP: true,
+  });
+
+  const page = await context.newPage();
+
+  // ── Collect console messages ──────────────────────────────────────────────
+  const consoleLogs = [];
+  page.on('console', (msg) => {
+    const type = msg.type();
+    const text = msg.text();
+    consoleLogs.push({ type, text });
+    const icon = type === 'error' ? '❌' : type === 'warning' ? '⚠️ ' : '📝';
+    console.log(`  ${icon} [console.${type}] ${text}`);
+  });
+
+  // ── Collect uncaught page errors ──────────────────────────────────────────
+  const pageErrors = [];
+  page.on('pageerror', (err) => {
+    pageErrors.push(err.message);
+    console.log(`  💥 [pageerror] ${err.message}`);
+  });
+
+  // ── Collect failed network requests ──────────────────────────────────────
+  const failedRequests = [];
+  page.on('response', (response) => {
+    if (response.status() >= 400) {
+      const entry = `${response.status()} ${response.url()}`;
+      failedRequests.push(entry);
+      console.log(`  🌐 [network] ${entry}`);
+    }
+  });
+
+  // ── Navigate ──────────────────────────────────────────────────────────────
+  console.log(`\n📡 Navigating to ${DEV_URL} ...`);
+  try {
+    await page.goto(DEV_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
+  } catch (e) {
+    console.log(`\n❌ FATAL: Could not reach ${DEV_URL}`);
+    console.log(`   Is the Vite dev server running? (npm run dev)`);
+    console.log(`   Error: ${e.message}`);
+    await browser.close();
+    process.exit(1);
+  }
+
+  // ── Wait for app to render / preloader to run ─────────────────────────────
+  console.log(`⏳ Waiting ${WAIT_MS}ms for app to render...`);
+  await page.waitForTimeout(WAIT_MS);
+
+  // ── Check for Vite error overlay ──────────────────────────────────────────
+  const viteErrorOverlay = await page.$('vite-error-overlay');
+  if (viteErrorOverlay) {
+    const overlayText = await viteErrorOverlay.innerText().catch(() => '(could not read overlay text)');
+    console.log(`\n❌ VITE ERROR OVERLAY DETECTED:\n${overlayText}`);
+  } else {
+    console.log('\n✅ No Vite error overlay detected.');
+  }
+
+  // ── Check for React error boundary output ────────────────────────────────
+  const errorBoundary = await page.$('[data-reactroot] ~ div:has(h1)');
+  if (errorBoundary) {
+    const errorText = await errorBoundary.innerText().catch(() => '');
+    if (errorText.toLowerCase().includes('error')) {
+      console.log(`\n⚠️  Possible React error boundary output:\n  ${errorText.substring(0, 300)}`);
+    }
+  }
+
+  // ── Get visible page title and body snippet ───────────────────────────────
+  const title = await page.title();
+  const bodyText = await page.evaluate(() => document.body?.innerText?.substring(0, 500) || '(empty body)');
+  console.log(`\n📄 Page title: "${title}"`);
+  console.log(`📄 Body text preview:\n  ${bodyText.replace(/\n/g, '\n  ')}`);
+
+  // ── Screenshot ────────────────────────────────────────────────────────────
+  await page.screenshot({ path: SCREENSHOT_PATH, fullPage: true });
+  console.log(`\n📸 Screenshot saved: ${SCREENSHOT_PATH}`);
+
+  // ── Summary ───────────────────────────────────────────────────────────────
+  console.log('\n' + '━'.repeat(50));
+  console.log('📊 SUMMARY');
+  console.log('━'.repeat(50));
+
+  const errors = consoleLogs.filter(l => l.type === 'error');
+  const warnings = consoleLogs.filter(l => l.type === 'warning');
+
+  console.log(`  Console errors:    ${errors.length}`);
+  console.log(`  Console warnings:  ${warnings.length}`);
+  console.log(`  Page errors:       ${pageErrors.length}`);
+  console.log(`  Failed requests:   ${failedRequests.length}`);
+  console.log(`  Vite overlay:      ${viteErrorOverlay ? 'YES ❌' : 'none ✅'}`);
+
+  if (errors.length === 0 && pageErrors.length === 0 && !viteErrorOverlay) {
+    console.log('\n✅ ALL CLEAR — app appears to be running without errors.\n');
+  } else {
+    console.log('\n⚠️  Issues were detected. Review the output above.\n');
+  }
+
+  await browser.close();
+})();
+</file>
+
+<file path="components.json">
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "radix-nova",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.js",
+    "css": "src/index.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "rtl": false,
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "menuColor": "default",
+  "menuAccent": "subtle",
+  "registries": {}
+}
+</file>
+
+<file path="eslint.config.js">
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import tseslint from 'typescript-eslint'
+import { defineConfig, globalIgnores } from 'eslint/config'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      js.configs.recommended,
+      tseslint.configs.recommended,
+      reactHooks.configs.flat.recommended,
+      reactRefresh.configs.vite,
+    ],
+    languageOptions: {
+      globals: globals.browser,
+    },
+  },
+])
+</file>
+
+<file path="index.html">
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sovereign RAG Terminal</title>
+</head>
+
+<body>
+  <!-- This is where React will mount your App.tsx -->
+  <div id="root"></div>
+
+  <!-- CRITICAL FIX: Point Vite to the TypeScript React entry file -->
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>
+</file>
+
+<file path="package.json">
+{
+  "name": "sovereign-rag",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@assistant-ui/react": "^0.14.13",
+    "@assistant-ui/react-markdown": "^0.14.1",
+    "@huggingface/transformers": "^4.2.0",
+    "@langchain/core": "^1.1.48",
+    "@langchain/langgraph": "^1.3.4",
+    "@orama/orama": "^3.1.18",
+    "@radix-ui/react-tooltip": "^1.2.8",
+    "@studio-freight/lenis": "^1.0.42",
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/three": "^0.184.1",
+    "@wllama/wllama": "^3.4.1",
+    "autoprefixer": "^10.5.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "gsap": "^3.15.0",
+    "localforage": "^1.10.0",
+    "lucide-react": "^1.17.0",
+    "postcss": "^8.5.15",
+    "radix-ui": "^1.4.3",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "remark-gfm": "^4.0.1",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.0",
+    "three": "^0.184.0",
+    "tw-shimmer": "^0.4.11",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.12.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "playwright": "^1.60.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.59.2",
+    "vite": "^8.0.12"
+  }
+}
+</file>
+
+<file path="README.md">
+# React + TypeScript + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
+
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
+</file>
+
+<file path="src/App.css">
+.counter {
+  font-size: 16px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border: 2px solid transparent;
+  transition: border-color 0.3s;
+  margin-bottom: 24px;
+
+  &:hover {
+    border-color: var(--accent-border);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.hero {
+  position: relative;
+
+  .base,
+  .framework,
+  .vite {
+    inset-inline: 0;
+    margin: 0 auto;
+  }
+
+  .base {
+    width: 170px;
+    position: relative;
+    z-index: 0;
+  }
+
+  .framework,
+  .vite {
+    position: absolute;
+  }
+
+  .framework {
+    z-index: 1;
+    top: 34px;
+    height: 28px;
+    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
+      scale(1.4);
+  }
+
+  .vite {
+    z-index: 0;
+    top: 107px;
+    height: 26px;
+    width: auto;
+    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
+      scale(0.8);
+  }
+}
+
+#center {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  place-content: center;
+  place-items: center;
+  flex-grow: 1;
+
+  @media (max-width: 1024px) {
+    padding: 32px 20px 24px;
+    gap: 18px;
+  }
+}
+
+#next-steps {
+  display: flex;
+  border-top: 1px solid var(--border);
+  text-align: left;
+
+  & > div {
+    flex: 1 1 0;
+    padding: 32px;
+    @media (max-width: 1024px) {
+      padding: 24px 20px;
+    }
+  }
+
+  .icon {
+    margin-bottom: 16px;
+    width: 22px;
+    height: 22px;
+  }
+
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+#docs {
+  border-right: 1px solid var(--border);
+
+  @media (max-width: 1024px) {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+#next-steps ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  gap: 8px;
+  margin: 32px 0 0;
+
+  .logo {
+    height: 18px;
+  }
+
+  a {
+    color: var(--text-h);
+    font-size: 16px;
+    border-radius: 6px;
+    background: var(--social-bg);
+    display: flex;
+    padding: 6px 12px;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    transition: box-shadow 0.3s;
+
+    &:hover {
+      box-shadow: var(--shadow);
+    }
+    .button-icon {
+      height: 18px;
+      width: 18px;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    margin-top: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+
+    li {
+      flex: 1 1 calc(50% - 8px);
+    }
+
+    a {
+      width: 100%;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+  }
+}
+
+#spacer {
+  height: 88px;
+  border-top: 1px solid var(--border);
+  @media (max-width: 1024px) {
+    height: 48px;
+  }
+}
+
+.ticks {
+  position: relative;
+  width: 100%;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: -4.5px;
+    border: 5px solid transparent;
+  }
+
+  &::before {
+    left: 0;
+    border-left-color: var(--border);
+  }
+  &::after {
+    right: 0;
+    border-right-color: var(--border);
+  }
+}
+</file>
+
+<file path="src/App.tsx">
+import { useEffect, useState, useRef } from 'react';
+import { useLocalRuntime, AssistantRuntimeProvider } from "@assistant-ui/react";
+import { Thread } from "./components/assistant-ui/thread";
+import { ragApp, setActiveProgressCallback } from './orchestrator';
+import { workers } from "./rag/pipeline";
+import ProceduralBackground from './components/ProceduralBackground';
+import Lenis from '@studio-freight/lenis';
+import gsap from 'gsap';
+import { TooltipProvider } from "@/components/ui/tooltip";
+
+export default function App() {
+    const [isReady, setIsReady] = useState(false);
+    const [systemStatus, setSystemStatus] = useState("Initializing WebGPU & WASM Engines...");
+    const preloaderRef = useRef<HTMLDivElement>(null);
+
+    const [globalStatus, setGlobalStatus] = useState<string | null>(null);
+
+    // Mount Inference Worker instantly & track global progress
+    useEffect(() => {
+        const handleWorkerMsg = (e: MessageEvent) => {
+            if (e.data.status === 'global_progress') {
+                setGlobalStatus(e.data.log);
+                
+                // Hide the pill shortly after it hits 100%
+                if (e.data.percent === 100) {
+                    setTimeout(() => setGlobalStatus(null), 3000);
+                }
+            }
+        };
+
+        // Accessing workers.inference spawns the worker and triggers startInitialization() immediately!
+        workers.inference.addEventListener('message', handleWorkerMsg);
+        
+        return () => workers.inference.removeEventListener('message', handleWorkerMsg);
+    }, []);
+
+    // Initialize Smooth Scrolling (Lenis)
+    useEffect(() => {
+        const lenis = new Lenis({
+            duration: 1.2,
+            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+            orientation: 'vertical',
+            gestureOrientation: 'vertical',
+            smoothWheel: true,
+        });
+
+        function raf(time: number) {
+            lenis.raf(time);
+            requestAnimationFrame(raf);
+        }
+        requestAnimationFrame(raf);
+
+        return () => lenis.destroy();
+    }, []);
+
+    // Boot Sequence Simulation & Preloader Exit Animation
+    useEffect(() => {
+        const bootSequence = async () => {
+            setTimeout(() => setSystemStatus("Compiling Orama Vector Indices..."), 1000);
+
+            setTimeout(() => {
+                if (preloaderRef.current) {
+                    gsap.to(preloaderRef.current, {
+                        opacity: 0,
+                        scale: 1.1,
+                        filter: "blur(10px)",
+                        duration: 1.2,
+                        ease: "power3.inOut",
+                        onComplete: () => {
+                            setIsReady(true);
+                        }
+                    });
+                }
+            }, 2500);
+        };
+        bootSequence();
+    }, []);
+
+    const runtime = useLocalRuntime({
+        run: async function* ({ messages, abortSignal }) {
+            try {
+                const latestMessage = messages[messages.length - 1];
+
+                const contentArray = latestMessage.content as any[];
+                const queryText = typeof latestMessage.content === 'string'
+                    ? latestMessage.content
+                    : contentArray.find((part) => part.type === 'text')?.text || "";
+
+                const queue: any[] = [];
+                let done = false;
+                let error: any = null;
+
+                setActiveProgressCallback((msg) => {
+                    queue.push(msg);
+                });
+
+                ragApp.invoke(
+                    { query: queryText },
+                    { signal: abortSignal }
+                ).then((state) => {
+                    queue.push({ type: 'done', text: state.answer });
+                    done = true;
+                }).catch((e) => {
+                    error = e;
+                    done = true;
+                });
+
+                let displayedText = "";
+                let currentLog = "";
+
+                while (!done || queue.length > 0) {
+                    if (queue.length > 0) {
+                        const msg = queue.shift();
+                        if (msg.type === 'done') {
+                            yield { content: [{ type: "text", text: msg.text }] };
+                        } else if (msg.log) {
+                            currentLog = msg.log;
+                            yield { content: [{ type: "text", text: `${currentLog}\n\n${displayedText}` }] };
+                        } else if (msg.text !== undefined) {
+                            displayedText = msg.text;
+                            yield { content: [{ type: "text", text: currentLog ? `${currentLog}\n\n${displayedText}` : displayedText }] };
+                        }
+                    } else {
+                        await new Promise(r => setTimeout(r, 50));
+                    }
+                }
+
+                setActiveProgressCallback(null);
+
+                if (error) {
+                    return {
+                        content: [{ type: "text", text: "System error: Failed to reach the local orchestrator." }]
+                    };
+                }
+            } catch (error) {
+                console.error("LangGraph Invocation Failed:", error);
+                return {
+                    content: [{ type: "text", text: "System error: Failed to reach the local orchestrator." }]
+                };
+            }
+        }
+    });
+
+    return (
+        <TooltipProvider>
+            <AssistantRuntimeProvider runtime={runtime}>
+                <div className="relative flex h-screen w-full bg-zinc-950 overflow-hidden text-white">
+
+                    {/* Preloader — GSAP animates this out on boot */}
+                    {!isReady && (
+                        <div
+                            ref={preloaderRef}
+                            className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-zinc-950 gap-4"
+                        >
+                            <div className="w-16 h-16 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+                            <p className="text-zinc-400 text-sm font-mono tracking-widest">{systemStatus}</p>
+                        </div>
+                    )}
+
+                    {/* Global Engine Status Pill */}
+                    {globalStatus && (
+                        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40">
+                            <div className="glass-panel px-4 py-2 rounded-full border border-violet-500/30 flex items-center gap-3 shadow-lg shadow-violet-500/10">
+                                <div className="w-3 h-3 rounded-full bg-violet-500 animate-pulse" />
+                                <span className="text-xs font-mono text-violet-200 tracking-wide">{globalStatus}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Layer 1: The Procedural Background locked to the back */}
+                    <div className="absolute inset-0 z-0 pointer-events-none">
+                        <ProceduralBackground />
+                    </div>
+
+                    {/* Layer 2: The Chat Interface hovering on top */}
+                    <div className="relative z-10 w-full max-w-4xl mx-auto my-6 h-[calc(100vh-3rem)] flex flex-col glass-panel rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/5">
+                        <Thread />
+                    </div>
+
+                </div>
+            </AssistantRuntimeProvider>
+        </TooltipProvider>
+    );
+}
+</file>
+
+<file path="src/assets/react.svg">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="35.93" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 228"><path fill="#00D8FF" d="M210.483 73.824a171.49 171.49 0 0 0-8.24-2.597c.465-1.9.893-3.777 1.273-5.621c6.238-30.281 2.16-54.676-11.769-62.708c-13.355-7.7-35.196.329-57.254 19.526a171.23 171.23 0 0 0-6.375 5.848a155.866 155.866 0 0 0-4.241-3.917C100.759 3.829 77.587-4.822 63.673 3.233C50.33 10.957 46.379 33.89 51.995 62.588a170.974 170.974 0 0 0 1.892 8.48c-3.28.932-6.445 1.924-9.474 2.98C17.309 83.498 0 98.307 0 113.668c0 15.865 18.582 31.778 46.812 41.427a145.52 145.52 0 0 0 6.921 2.165a167.467 167.467 0 0 0-2.01 9.138c-5.354 28.2-1.173 50.591 12.134 58.266c13.744 7.926 36.812-.22 59.273-19.855a145.567 145.567 0 0 0 5.342-4.923a168.064 168.064 0 0 0 6.92 6.314c21.758 18.722 43.246 26.282 56.54 18.586c13.731-7.949 18.194-32.003 12.4-61.268a145.016 145.016 0 0 0-1.535-6.842c1.62-.48 3.21-.974 4.76-1.488c29.348-9.723 48.443-25.443 48.443-41.52c0-15.417-17.868-30.326-45.517-39.844Zm-6.365 70.984c-1.4.463-2.836.91-4.3 1.345c-3.24-10.257-7.612-21.163-12.963-32.432c5.106-11 9.31-21.767 12.459-31.957c2.619.758 5.16 1.557 7.61 2.4c23.69 8.156 38.14 20.213 38.14 29.504c0 9.896-15.606 22.743-40.946 31.14Zm-10.514 20.834c2.562 12.94 2.927 24.64 1.23 33.787c-1.524 8.219-4.59 13.698-8.382 15.893c-8.067 4.67-25.32-1.4-43.927-17.412a156.726 156.726 0 0 1-6.437-5.87c7.214-7.889 14.423-17.06 21.459-27.246c12.376-1.098 24.068-2.894 34.671-5.345a134.17 134.17 0 0 1 1.386 6.193ZM87.276 214.515c-7.882 2.783-14.16 2.863-17.955.675c-8.075-4.657-11.432-22.636-6.853-46.752a156.923 156.923 0 0 1 1.869-8.499c10.486 2.32 22.093 3.988 34.498 4.994c7.084 9.967 14.501 19.128 21.976 27.15a134.668 134.668 0 0 1-4.877 4.492c-9.933 8.682-19.886 14.842-28.658 17.94ZM50.35 144.747c-12.483-4.267-22.792-9.812-29.858-15.863c-6.35-5.437-9.555-10.836-9.555-15.216c0-9.322 13.897-21.212 37.076-29.293c2.813-.98 5.757-1.905 8.812-2.773c3.204 10.42 7.406 21.315 12.477 32.332c-5.137 11.18-9.399 22.249-12.634 32.792a134.718 134.718 0 0 1-6.318-1.979Zm12.378-84.26c-4.811-24.587-1.616-43.134 6.425-47.789c8.564-4.958 27.502 2.111 47.463 19.835a144.318 144.318 0 0 1 3.841 3.545c-7.438 7.987-14.787 17.08-21.808 26.988c-12.04 1.116-23.565 2.908-34.161 5.309a160.342 160.342 0 0 1-1.76-7.887Zm110.427 27.268a347.8 347.8 0 0 0-7.785-12.803c8.168 1.033 15.994 2.404 23.343 4.08c-2.206 7.072-4.956 14.465-8.193 22.045a381.151 381.151 0 0 0-7.365-13.322Zm-45.032-43.861c5.044 5.465 10.096 11.566 15.065 18.186a322.04 322.04 0 0 0-30.257-.006c4.974-6.559 10.069-12.652 15.192-18.18ZM82.802 87.83a323.167 323.167 0 0 0-7.227 13.238c-3.184-7.553-5.909-14.98-8.134-22.152c7.304-1.634 15.093-2.97 23.209-3.984a321.524 321.524 0 0 0-7.848 12.897Zm8.081 65.352c-8.385-.936-16.291-2.203-23.593-3.793c2.26-7.3 5.045-14.885 8.298-22.6a321.187 321.187 0 0 0 7.257 13.246c2.594 4.48 5.28 8.868 8.038 13.147Zm37.542 31.03c-5.184-5.592-10.354-11.779-15.403-18.433c4.902.192 9.899.29 14.978.29c5.218 0 10.376-.117 15.453-.343c-4.985 6.774-10.018 12.97-15.028 18.486Zm52.198-57.817c3.422 7.8 6.306 15.345 8.596 22.52c-7.422 1.694-15.436 3.058-23.88 4.071a382.417 382.417 0 0 0 7.859-13.026a347.403 347.403 0 0 0 7.425-13.565Zm-16.898 8.101a358.557 358.557 0 0 1-12.281 19.815a329.4 329.4 0 0 1-23.444.823c-7.967 0-15.716-.248-23.178-.732a310.202 310.202 0 0 1-12.513-19.846h.001a307.41 307.41 0 0 1-10.923-20.627a310.278 310.278 0 0 1 10.89-20.637l-.001.001a307.318 307.318 0 0 1 12.413-19.761c7.613-.576 15.42-.876 23.31-.876H128c7.926 0 15.743.303 23.354.883a329.357 329.357 0 0 1 12.335 19.695a358.489 358.489 0 0 1 11.036 20.54a329.472 329.472 0 0 1-11 20.722Zm22.56-122.124c8.572 4.944 11.906 24.881 6.52 51.026c-.344 1.668-.73 3.367-1.15 5.09c-10.622-2.452-22.155-4.275-34.23-5.408c-7.034-10.017-14.323-19.124-21.64-27.008a160.789 160.789 0 0 1 5.888-5.4c18.9-16.447 36.564-22.941 44.612-18.3ZM128 90.808c12.625 0 22.86 10.235 22.86 22.86s-10.235 22.86-22.86 22.86s-22.86-10.235-22.86-22.86s10.235-22.86 22.86-22.86Z"></path></svg>
+</file>
+
+<file path="src/assets/vite.svg">
+<svg xmlns="http://www.w3.org/2000/svg" width="77" height="47" fill="none" aria-labelledby="vite-logo-title" viewBox="0 0 77 47"><title id="vite-logo-title">Vite</title><style>.parenthesis{fill:#000}@media (prefers-color-scheme:dark){.parenthesis{fill:#fff}}</style><path fill="#9135ff" d="M40.151 45.71c-.663.844-2.02.374-2.02-.699V34.708a2.26 2.26 0 0 0-2.262-2.262H24.493c-.92 0-1.457-1.04-.92-1.788l7.479-10.471c1.07-1.498 0-3.578-1.842-3.578H15.443c-.92 0-1.456-1.04-.92-1.788l9.696-13.576c.213-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.472c-1.07 1.497 0 3.578 1.842 3.578h11.376c.944 0 1.474 1.087.89 1.83L40.153 45.712z"/><mask id="a" width="48" height="47" x="14" y="0" maskUnits="userSpaceOnUse" style="mask-type:alpha"><path fill="#000" d="M40.047 45.71c-.663.843-2.02.374-2.02-.699V34.708a2.26 2.26 0 0 0-2.262-2.262H24.389c-.92 0-1.457-1.04-.92-1.788l7.479-10.472c1.07-1.497 0-3.578-1.842-3.578H15.34c-.92 0-1.456-1.04-.92-1.788l9.696-13.575c.213-.297.556-.474.92-.474H53.93c.92 0 1.456 1.04.92 1.788L47.37 13.03c-1.07 1.498 0 3.578 1.842 3.578h11.376c.944 0 1.474 1.088.89 1.831L40.049 45.712z"/></mask><g mask="url(#a)"><g filter="url(#b)"><ellipse cx="5.508" cy="14.704" fill="#eee6ff" rx="5.508" ry="14.704" transform="rotate(269.814 20.96 11.29)scale(-1 1)"/></g><g filter="url(#c)"><ellipse cx="10.399" cy="29.851" fill="#eee6ff" rx="10.399" ry="29.851" transform="rotate(89.814 -16.902 -8.275)scale(1 -1)"/></g><g filter="url(#d)"><ellipse cx="5.508" cy="30.487" fill="#8900ff" rx="5.508" ry="30.487" transform="rotate(89.814 -19.197 -7.127)scale(1 -1)"/></g><g filter="url(#e)"><ellipse cx="5.508" cy="30.599" fill="#8900ff" rx="5.508" ry="30.599" transform="rotate(89.814 -25.928 4.177)scale(1 -1)"/></g><g filter="url(#f)"><ellipse cx="5.508" cy="30.599" fill="#8900ff" rx="5.508" ry="30.599" transform="rotate(89.814 -25.738 5.52)scale(1 -1)"/></g><g filter="url(#g)"><ellipse cx="14.072" cy="22.078" fill="#eee6ff" rx="14.072" ry="22.078" transform="rotate(93.35 31.245 55.578)scale(-1 1)"/></g><g filter="url(#h)"><ellipse cx="3.47" cy="21.501" fill="#8900ff" rx="3.47" ry="21.501" transform="rotate(89.009 35.419 55.202)scale(-1 1)"/></g><g filter="url(#i)"><ellipse cx="3.47" cy="21.501" fill="#8900ff" rx="3.47" ry="21.501" transform="rotate(89.009 35.419 55.202)scale(-1 1)"/></g><g filter="url(#j)"><ellipse cx="14.592" cy="9.743" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(39.51 14.592 9.743)"/></g><g filter="url(#k)"><ellipse cx="61.728" cy="-5.321" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(37.892 61.728 -5.32)"/></g><g filter="url(#l)"><ellipse cx="55.618" cy="7.104" fill="#00c2ff" rx="5.971" ry="9.665" transform="rotate(37.892 55.618 7.104)"/></g><g filter="url(#m)"><ellipse cx="12.326" cy="39.103" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(37.892 12.326 39.103)"/></g><g filter="url(#n)"><ellipse cx="12.326" cy="39.103" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(37.892 12.326 39.103)"/></g><g filter="url(#o)"><ellipse cx="49.857" cy="30.678" fill="#8900ff" rx="4.407" ry="29.108" transform="rotate(37.892 49.857 30.678)"/></g><g filter="url(#p)"><ellipse cx="52.623" cy="33.171" fill="#00c2ff" rx="5.971" ry="15.297" transform="rotate(37.892 52.623 33.17)"/></g></g><path d="M6.919 0c-9.198 13.166-9.252 33.575 0 46.789h6.215c-9.25-13.214-9.196-33.623 0-46.789zm62.424 0h-6.215c9.198 13.166 9.252 33.575 0 46.789h6.215c9.25-13.214 9.196-33.623 0-46.789" class="parenthesis"/><defs><filter id="b" width="60.045" height="41.654" x="-5.564" y="16.92" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="7.659"/></filter><filter id="c" width="90.34" height="51.437" x="-40.407" y="-6.762" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="7.659"/></filter><filter id="d" width="79.355" height="29.4" x="-35.435" y="2.801" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="e" width="79.579" height="29.4" x="-30.84" y="20.8" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="f" width="79.579" height="29.4" x="-29.307" y="21.949" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="g" width="74.749" height="58.852" x="29.961" y="-17.13" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="7.659"/></filter><filter id="h" width="61.377" height="25.362" x="37.754" y="3.055" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="i" width="61.377" height="25.362" x="37.754" y="3.055" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="j" width="56.045" height="63.649" x="-13.43" y="-22.082" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="k" width="54.814" height="64.646" x="34.321" y="-37.644" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="l" width="33.541" height="35.313" x="38.847" y="-10.552" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="m" width="54.814" height="64.646" x="-15.081" y="6.78" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="n" width="54.814" height="64.646" x="-15.081" y="6.78" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="o" width="54.814" height="64.646" x="22.45" y="-1.645" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter><filter id="p" width="39.409" height="43.623" x="32.919" y="11.36" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17286" stdDeviation="4.596"/></filter></defs></svg>
+</file>
+
+<file path="src/components/assistant-ui/attachment.tsx">
+"use client";
+
+import { type PropsWithChildren, useEffect, useState, type FC } from "react";
+import { XIcon, PlusIcon, FileText } from "lucide-react";
+import {
+  AttachmentPrimitive,
+  ComposerPrimitive,
+  MessagePrimitive,
+  useAuiState,
+  useAui,
+} from "@assistant-ui/react";
+import { useShallow } from "zustand/shallow";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import { cn } from "@/lib/utils";
+
+const useFileSrc = (file: File | undefined) => {
+  const [src, setSrc] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!file) {
+      setSrc(undefined);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setSrc(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [file]);
+
+  return src;
+};
+
+const useAttachmentSrc = () => {
+  const { file, src } = useAuiState(
+    useShallow((s): { file?: File; src?: string } => {
+      if (s.attachment.type !== "image") return {};
+      if (s.attachment.file) return { file: s.attachment.file };
+      const src = s.attachment.content?.filter((c) => c.type === "image")[0]
+        ?.image;
+      if (!src) return {};
+      return { src };
+    }),
+  );
+
+  return useFileSrc(file) ?? src;
+};
+
+type AttachmentPreviewProps = {
+  src: string;
+};
+
+const AttachmentPreview: FC<AttachmentPreviewProps> = ({ src }) => {
+  const [isLoaded, setIsLoaded] = useState(false);
+  return (
+    <img
+      src={src}
+      alt="Attachment preview"
+      className={cn(
+        "block h-auto max-h-[80vh] w-auto max-w-full object-contain",
+        isLoaded
+          ? "aui-attachment-preview-image-loaded"
+          : "aui-attachment-preview-image-loading invisible",
+      )}
+      onLoad={() => setIsLoaded(true)}
+    />
+  );
+};
+
+const AttachmentPreviewDialog: FC<PropsWithChildren> = ({ children }) => {
+  const src = useAttachmentSrc();
+
+  if (!src) return children;
+
+  return (
+    <Dialog>
+      <DialogTrigger
+        className="aui-attachment-preview-trigger hover:bg-accent/50 cursor-pointer transition-colors"
+        asChild
+      >
+        {children}
+      </DialogTrigger>
+      <DialogContent className="aui-attachment-preview-dialog-content [&>button]:bg-foreground/60 [&_svg]:text-background [&>button]:hover:[&_svg]:text-destructive p-2 sm:max-w-3xl [&>button]:rounded-full [&>button]:p-1 [&>button]:opacity-100 [&>button]:ring-0!">
+        <DialogTitle className="aui-sr-only sr-only">
+          Image Attachment Preview
+        </DialogTitle>
+        <div className="aui-attachment-preview bg-background relative mx-auto flex max-h-[80dvh] w-full items-center justify-center overflow-hidden">
+          <AttachmentPreview src={src} />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const AttachmentThumb: FC = () => {
+  const src = useAttachmentSrc();
+
+  return (
+    <Avatar className="aui-attachment-tile-avatar h-full w-full rounded-none">
+      <AvatarImage
+        src={src}
+        alt="Attachment preview"
+        className="aui-attachment-tile-image object-cover"
+      />
+      <AvatarFallback>
+        <FileText className="aui-attachment-tile-fallback-icon text-muted-foreground size-8" />
+      </AvatarFallback>
+    </Avatar>
+  );
+};
+
+const AttachmentUI: FC = () => {
+  const aui = useAui();
+  const isComposer = aui.attachment.source !== "message";
+
+  const isImage = useAuiState((s) => s.attachment.type === "image");
+  const typeLabel = useAuiState((s) => {
+    const type = s.attachment.type;
+    switch (type) {
+      case "image":
+        return "Image";
+      case "document":
+        return "Document";
+      case "file":
+        return "File";
+      default:
+        return type;
+    }
+  });
+
+  return (
+    <Tooltip>
+      <AttachmentPrimitive.Root
+        className={cn(
+          "aui-attachment-root relative",
+          isImage && "aui-attachment-root-composer only:*:first:size-24",
+        )}
+      >
+        <AttachmentPreviewDialog>
+          <TooltipTrigger asChild>
+            <div
+              className="aui-attachment-tile bg-muted size-14 cursor-pointer overflow-hidden rounded-[calc(var(--composer-radius)-var(--composer-padding))] border transition-opacity hover:opacity-75"
+              role="button"
+              tabIndex={0}
+              aria-label={`${typeLabel} attachment`}
+            >
+              <AttachmentThumb />
+            </div>
+          </TooltipTrigger>
+        </AttachmentPreviewDialog>
+        {isComposer && <AttachmentRemove />}
+      </AttachmentPrimitive.Root>
+      <TooltipContent side="top">
+        <AttachmentPrimitive.Name />
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
+const AttachmentRemove: FC = () => {
+  return (
+    <AttachmentPrimitive.Remove asChild>
+      <TooltipIconButton
+        tooltip="Remove file"
+        className="aui-attachment-tile-remove text-muted-foreground hover:[&_svg]:text-destructive absolute end-1.5 top-1.5 size-3.5 rounded-full bg-white opacity-100 shadow-sm hover:bg-white! [&_svg]:text-black"
+        side="top"
+      >
+        <XIcon className="aui-attachment-remove-icon size-3 dark:stroke-[2.5px]" />
+      </TooltipIconButton>
+    </AttachmentPrimitive.Remove>
+  );
+};
+
+export const UserMessageAttachments: FC = () => {
+  return (
+    <div className="aui-user-message-attachments-end col-span-full col-start-1 row-start-1 flex w-full flex-row justify-end gap-2">
+      <MessagePrimitive.Attachments>
+        {() => <AttachmentUI />}
+      </MessagePrimitive.Attachments>
+    </div>
+  );
+};
+
+export const ComposerAttachments: FC = () => {
+  return (
+    <div className="aui-composer-attachments flex w-full flex-row items-center gap-2 overflow-x-auto empty:hidden">
+      <ComposerPrimitive.Attachments>
+        {() => <AttachmentUI />}
+      </ComposerPrimitive.Attachments>
+    </div>
+  );
+};
+
+export const ComposerAddAttachment: FC = () => {
+  return (
+    <ComposerPrimitive.AddAttachment asChild>
+      <TooltipIconButton
+        tooltip="Add Attachment"
+        side="bottom"
+        variant="ghost"
+        size="icon"
+        className="aui-composer-add-attachment hover:bg-muted-foreground/15 dark:border-muted-foreground/15 dark:hover:bg-muted-foreground/30 size-8 rounded-full p-1 text-xs font-semibold"
+        aria-label="Add Attachment"
+      >
+        <PlusIcon className="aui-attachment-add-icon size-5 stroke-[1.5px]" />
+      </TooltipIconButton>
+    </ComposerPrimitive.AddAttachment>
+  );
+};
+</file>
+
+<file path="src/components/assistant-ui/markdown-text.tsx">
+"use client";
+
+import "@assistant-ui/react-markdown/styles/dot.css";
+
+import {
+  type CodeHeaderProps,
+  MarkdownTextPrimitive,
+  unstable_memoizeMarkdownComponents as memoizeMarkdownComponents,
+  useIsMarkdownCodeBlock,
+} from "@assistant-ui/react-markdown";
+import remarkGfm from "remark-gfm";
+import { type FC, memo, useState } from "react";
+import { CheckIcon, CopyIcon } from "lucide-react";
+
+import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import { cn } from "@/lib/utils";
+
+const MarkdownTextImpl = () => {
+  return (
+    <MarkdownTextPrimitive
+      remarkPlugins={[remarkGfm]}
+      className="aui-md"
+      components={defaultComponents}
+    />
+  );
+};
+
+export const MarkdownText = memo(MarkdownTextImpl);
+
+const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
+  const { isCopied, copyToClipboard } = useCopyToClipboard();
+  const onCopy = () => {
+    if (!code || isCopied) return;
+    copyToClipboard(code);
+  };
+
+  return (
+    <div className="aui-code-header-root border-border/50 bg-muted/50 mt-2.5 flex items-center justify-between rounded-t-lg border border-b-0 px-3 py-1.5 text-xs">
+      <span className="aui-code-header-language text-muted-foreground font-medium lowercase">
+        {language}
+      </span>
+      <TooltipIconButton tooltip="Copy" onClick={onCopy}>
+        {!isCopied && <CopyIcon />}
+        {isCopied && <CheckIcon />}
+      </TooltipIconButton>
+    </div>
+  );
+};
+
+const useCopyToClipboard = ({
+  copiedDuration = 3000,
+}: {
+  copiedDuration?: number;
+} = {}) => {
+  const [isCopied, setIsCopied] = useState<boolean>(false);
+
+  const copyToClipboard = (value: string) => {
+    if (!value || typeof navigator === "undefined" || !navigator.clipboard) {
+      return;
+    }
+
+    navigator.clipboard.writeText(value).then(
+      () => {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), copiedDuration);
+      },
+      () => {},
+    );
+  };
+
+  return { isCopied, copyToClipboard };
+};
+
+const defaultComponents = memoizeMarkdownComponents({
+  h1: ({ className, ...props }) => (
+    <h1
+      className={cn(
+        "aui-md-h1 mb-2 scroll-m-20 text-base font-semibold first:mt-0 last:mb-0",
+        className,
+      )}
+      {...props}
+    />
+  ),
+  h2: ({ className, ...props }) => (
+    <h2
+      className={cn(
+        "aui-md-h2 mt-3 mb-1.5 scroll-m-20 text-sm font-semibold first:mt-0 last:mb-0",
+        className,
+      )}
+      {...props}
+    />
+  ),
+  h3: ({ className, ...props }) => (
+    <h3
+      className={cn(
+        "aui-md-h3 mt-2.5 mb-1 scroll-m-20 text-sm font-semibold first:mt-0 last:mb-0",
+        className,
+      )}
+      {...props}
+    />
+  ),
+  h4: ({ className, ...props }) => (
+    <h4
+      className={cn(
+        "aui-md-h4 mt-2 mb-1 scroll-m-20 text-sm font-medium first:mt-0 last:mb-0",
+        className,
+      )}
+      {...props}
+    />
+  ),
+  h5: ({ className, ...props }) => (
+    <h5
+      className={cn(
+        "aui-md-h5 mt-2 mb-1 text-sm font-medium first:mt-0 last:mb-0",
+        className,
+      )}
+      {...props}
+    />
+  ),
+  h6: ({ className, ...props }) => (
+    <h6
+      className={cn(
+        "aui-md-h6 mt-2 mb-1 text-sm font-medium first:mt-0 last:mb-0",
+        className,
+      )}
+      {...props}
+    />
+  ),
+  p: ({ className, ...props }) => (
+    <p
+      className={cn(
+        "aui-md-p my-2.5 leading-normal first:mt-0 last:mb-0",
+        className,
+      )}
+      {...props}
+    />
+  ),
+  a: ({ className, ...props }) => (
+    <a
+      className={cn(
+        "aui-md-a text-primary hover:text-primary/80 underline underline-offset-2",
+        className,
+      )}
+      {...props}
+    />
+  ),
+  blockquote: ({ className, ...props }) => (
+    <blockquote
+      className={cn(
+        "aui-md-blockquote border-muted-foreground/30 text-muted-foreground my-2.5 border-s-2 ps-3 italic",
+        className,
+      )}
+      {...props}
+    />
+  ),
+  ul: ({ className, ...props }) => (
+    <ul
+      className={cn(
+        "aui-md-ul marker:text-muted-foreground my-2 ms-4 list-disc [&>li]:mt-1",
+        className,
+      )}
+      {...props}
+    />
+  ),
+  ol: ({ className, ...props }) => (
+    <ol
+      className={cn(
+        "aui-md-ol marker:text-muted-foreground my-2 ms-4 list-decimal [&>li]:mt-1",
+        className,
+      )}
+      {...props}
+    />
+  ),
+  hr: ({ className, ...props }) => (
+    <hr
+      className={cn("aui-md-hr border-muted-foreground/20 my-2", className)}
+      {...props}
+    />
+  ),
+  table: ({ className, ...props }) => (
+    <table
+      className={cn(
+        "aui-md-table my-2 w-full border-separate border-spacing-0 overflow-y-auto",
+        className,
+      )}
+      {...props}
+    />
+  ),
+  th: ({ className, ...props }) => (
+    <th
+      className={cn(
+        "aui-md-th bg-muted px-2 py-1 text-start font-medium first:rounded-ss-lg last:rounded-se-lg [[align=center]]:text-center [[align=right]]:text-right",
+        className,
+      )}
+      {...props}
+    />
+  ),
+  td: ({ className, ...props }) => (
+    <td
+      className={cn(
+        "aui-md-td border-muted-foreground/20 border-s border-b px-2 py-1 text-start last:border-e [[align=center]]:text-center [[align=right]]:text-right",
+        className,
+      )}
+      {...props}
+    />
+  ),
+  tr: ({ className, ...props }) => (
+    <tr
+      className={cn(
+        "aui-md-tr m-0 border-b p-0 first:border-t [&:last-child>td:first-child]:rounded-es-lg [&:last-child>td:last-child]:rounded-ee-lg",
+        className,
+      )}
+      {...props}
+    />
+  ),
+  li: ({ className, ...props }) => (
+    <li className={cn("aui-md-li leading-normal", className)} {...props} />
+  ),
+  sup: ({ className, ...props }) => (
+    <sup
+      className={cn("aui-md-sup [&>a]:text-xs [&>a]:no-underline", className)}
+      {...props}
+    />
+  ),
+  pre: ({ className, ...props }) => (
+    <pre
+      className={cn(
+        "aui-md-pre border-border/50 bg-muted/30 overflow-x-auto rounded-t-none rounded-b-lg border border-t-0 p-3 text-xs leading-relaxed",
+        className,
+      )}
+      {...props}
+    />
+  ),
+  code: function Code({ className, ...props }) {
+    const isCodeBlock = useIsMarkdownCodeBlock();
+    return (
+      <code
+        className={cn(
+          !isCodeBlock &&
+            "aui-md-inline-code border-border/50 bg-muted/50 rounded-md border px-1.5 py-0.5 font-mono text-[0.85em]",
+          className,
+        )}
+        {...props}
+      />
+    );
+  },
+  CodeHeader,
+});
+</file>
+
+<file path="src/components/assistant-ui/reasoning.tsx">
+"use client";
+
+import { memo, useCallback, useRef, useState } from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { BrainIcon, ChevronDownIcon } from "lucide-react";
+import {
+  useScrollLock,
+  useAuiState,
+  type ReasoningMessagePartComponent,
+  type ReasoningGroupComponent,
+} from "@assistant-ui/react";
+import { MarkdownText } from "@/components/assistant-ui/markdown-text";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
+
+const ANIMATION_DURATION = 200;
+
+const reasoningVariants = cva("aui-reasoning-root mb-4 w-full", {
+  variants: {
+    variant: {
+      outline: "rounded-lg border px-3 py-2",
+      ghost: "",
+      muted: "bg-muted/50 rounded-lg px-3 py-2",
+    },
+  },
+  defaultVariants: {
+    variant: "outline",
+  },
+});
+
+export type ReasoningRootProps = Omit<
+  React.ComponentProps<typeof Collapsible>,
+  "open" | "onOpenChange"
+> &
+  VariantProps<typeof reasoningVariants> & {
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    defaultOpen?: boolean;
+  };
+
+function ReasoningRoot({
+  className,
+  variant,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  defaultOpen = false,
+  children,
+  ...props
+}: ReasoningRootProps) {
+  const collapsibleRef = useRef<HTMLDivElement>(null);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+  const lockScroll = useScrollLock(collapsibleRef, ANIMATION_DURATION);
+
+  const isControlled = controlledOpen !== undefined;
+  const isOpen = isControlled ? controlledOpen : uncontrolledOpen;
+
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        lockScroll();
+      }
+      if (!isControlled) {
+        setUncontrolledOpen(open);
+      }
+      controlledOnOpenChange?.(open);
+    },
+    [lockScroll, isControlled, controlledOnOpenChange],
+  );
+
+  return (
+    <Collapsible
+      ref={collapsibleRef}
+      data-slot="reasoning-root"
+      data-variant={variant}
+      open={isOpen}
+      onOpenChange={handleOpenChange}
+      className={cn(
+        "group/reasoning-root",
+        reasoningVariants({ variant, className }),
+      )}
+      style={
+        {
+          "--animation-duration": `${ANIMATION_DURATION}ms`,
+        } as React.CSSProperties
+      }
+      {...props}
+    >
+      {children}
+    </Collapsible>
+  );
+}
+
+function ReasoningFade({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="reasoning-fade"
+      className={cn(
+        "aui-reasoning-fade pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8",
+        "bg-[linear-gradient(to_top,var(--color-background),transparent)]",
+        "group-data-[variant=muted]/reasoning-root:bg-[linear-gradient(to_top,hsl(var(--muted)/0.5),transparent)]",
+        "fade-in-0 animate-in",
+        "group-data-[state=open]/collapsible-content:animate-out",
+        "group-data-[state=open]/collapsible-content:fade-out-0",
+        "group-data-[state=open]/collapsible-content:delay-[calc(var(--animation-duration)*0.75)]",
+        "group-data-[state=open]/collapsible-content:fill-mode-forwards",
+        "duration-(--animation-duration)",
+        "group-data-[state=open]/collapsible-content:duration-(--animation-duration)",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function ReasoningTrigger({
+  active,
+  duration,
+  className,
+  ...props
+}: React.ComponentProps<typeof CollapsibleTrigger> & {
+  active?: boolean;
+  duration?: number;
+}) {
+  const durationText = duration ? ` (${duration}s)` : "";
+
+  return (
+    <CollapsibleTrigger
+      data-slot="reasoning-trigger"
+      className={cn(
+        "aui-reasoning-trigger group/trigger text-muted-foreground hover:text-foreground flex max-w-[75%] items-center gap-2 py-1 text-sm transition-colors",
+        className,
+      )}
+      {...props}
+    >
+      <BrainIcon
+        data-slot="reasoning-trigger-icon"
+        className="aui-reasoning-trigger-icon size-4 shrink-0"
+      />
+      <span
+        data-slot="reasoning-trigger-label"
+        className="aui-reasoning-trigger-label-wrapper relative inline-block leading-none"
+      >
+        <span>Reasoning{durationText}</span>
+        {active ? (
+          <span
+            aria-hidden
+            data-slot="reasoning-trigger-shimmer"
+            className="aui-reasoning-trigger-shimmer shimmer pointer-events-none absolute inset-0 motion-reduce:animate-none"
+          >
+            Reasoning{durationText}
+          </span>
+        ) : null}
+      </span>
+      <ChevronDownIcon
+        data-slot="reasoning-trigger-chevron"
+        className={cn(
+          "aui-reasoning-trigger-chevron mt-0.5 size-4 shrink-0",
+          "transition-transform duration-(--animation-duration) ease-out",
+          "group-data-[state=closed]/trigger:-rotate-90",
+          "group-data-[state=open]/trigger:rotate-0",
+        )}
+      />
+    </CollapsibleTrigger>
+  );
+}
+
+function ReasoningContent({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof CollapsibleContent>) {
+  return (
+    <CollapsibleContent
+      data-slot="reasoning-content"
+      className={cn(
+        "aui-reasoning-content text-muted-foreground relative overflow-hidden text-sm outline-none",
+        "group/collapsible-content ease-out",
+        "data-[state=closed]:animate-collapsible-up",
+        "data-[state=open]:animate-collapsible-down",
+        "data-[state=closed]:fill-mode-forwards",
+        "data-[state=closed]:pointer-events-none",
+        "data-[state=open]:duration-(--animation-duration)",
+        "data-[state=closed]:duration-(--animation-duration)",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+      <ReasoningFade />
+    </CollapsibleContent>
+  );
+}
+
+function ReasoningText({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="reasoning-text"
+      className={cn(
+        "aui-reasoning-text relative z-0 max-h-64 space-y-4 overflow-y-auto ps-6 pt-2 pb-2 leading-relaxed",
+        "transform-gpu transition-[transform,opacity]",
+        "group-data-[state=open]/collapsible-content:animate-in",
+        "group-data-[state=closed]/collapsible-content:animate-out",
+        "group-data-[state=open]/collapsible-content:fade-in-0",
+        "group-data-[state=closed]/collapsible-content:fade-out-0",
+        "group-data-[state=open]/collapsible-content:slide-in-from-top-4",
+        "group-data-[state=closed]/collapsible-content:slide-out-to-top-4",
+        "group-data-[state=open]/collapsible-content:duration-(--animation-duration)",
+        "group-data-[state=closed]/collapsible-content:duration-(--animation-duration)",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+const ReasoningImpl: ReasoningMessagePartComponent = () => <MarkdownText />;
+
+const ReasoningGroupImpl: ReasoningGroupComponent = ({
+  children,
+  startIndex,
+  endIndex,
+}) => {
+  const isReasoningStreaming = useAuiState((s) => {
+    if (s.message.status?.type !== "running") return false;
+    const lastIndex = s.message.parts.length - 1;
+    if (lastIndex < 0) return false;
+    const lastType = s.message.parts[lastIndex]?.type;
+    if (lastType !== "reasoning") return false;
+    return lastIndex >= startIndex && lastIndex <= endIndex;
+  });
+
+  return (
+    <ReasoningRoot defaultOpen={isReasoningStreaming}>
+      <ReasoningTrigger active={isReasoningStreaming} />
+      <ReasoningContent aria-busy={isReasoningStreaming}>
+        <ReasoningText>{children}</ReasoningText>
+      </ReasoningContent>
+    </ReasoningRoot>
+  );
+};
+
+const Reasoning = memo(
+  ReasoningImpl,
+) as unknown as ReasoningMessagePartComponent & {
+  Root: typeof ReasoningRoot;
+  Trigger: typeof ReasoningTrigger;
+  Content: typeof ReasoningContent;
+  Text: typeof ReasoningText;
+  Fade: typeof ReasoningFade;
+};
+
+Reasoning.displayName = "Reasoning";
+Reasoning.Root = ReasoningRoot;
+Reasoning.Trigger = ReasoningTrigger;
+Reasoning.Content = ReasoningContent;
+Reasoning.Text = ReasoningText;
+Reasoning.Fade = ReasoningFade;
+
+/**
+ * @deprecated This wrapper targets the legacy `components.ReasoningGroup`
+ * prop on `<MessagePrimitive.Parts>`. Use `<MessagePrimitive.GroupedParts>`
+ * with a `groupBy` returning `"group-reasoning"` and compose `ReasoningRoot`
+ * / `ReasoningTrigger` / `ReasoningContent` / `ReasoningText` directly.
+ * See `thread.tsx` for an example.
+ */
+const ReasoningGroup = memo(ReasoningGroupImpl);
+ReasoningGroup.displayName = "ReasoningGroup";
+
+export {
+  Reasoning,
+  ReasoningGroup,
+  ReasoningRoot,
+  ReasoningTrigger,
+  ReasoningContent,
+  ReasoningText,
+  ReasoningFade,
+  reasoningVariants,
+};
+</file>
+
+<file path="src/components/assistant-ui/thread.tsx">
+import {
+  ComposerAddAttachment,
+  ComposerAttachments,
+  UserMessageAttachments,
+} from "@/components/assistant-ui/attachment";
+import { MarkdownText } from "@/components/assistant-ui/markdown-text";
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningRoot,
+  ReasoningText,
+  ReasoningTrigger,
+} from "@/components/assistant-ui/reasoning";
+import {
+  ToolGroupContent,
+  ToolGroupRoot,
+  ToolGroupTrigger,
+} from "@/components/assistant-ui/tool-group";
+import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
+import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import { Button } from "@/components/ui/button";
+import { cn } from "../../lib/utils";
+import {
+  ActionBarMorePrimitive,
+  ActionBarPrimitive,
+  AuiIf,
+  BranchPickerPrimitive,
+  ComposerPrimitive,
+  ErrorPrimitive,
+  groupPartByType,
+  MessagePrimitive,
+  SuggestionPrimitive,
+  ThreadPrimitive,
+  useAuiState,
+} from "@assistant-ui/react";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CopyIcon,
+  DownloadIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  RefreshCwIcon,
+  SquareIcon,
+} from "lucide-react";
+import type { FC } from "react";
+
+export const Thread: FC = () => {
+  return (
+    <ThreadPrimitive.Root
+      className="aui-root aui-thread-root bg-transparent @container flex h-full flex-col"
+      style={{
+        ["--thread-max-width" as string]: "44rem",
+        ["--composer-radius" as string]: "24px",
+        ["--composer-padding" as string]: "10px",
+      }}
+    >
+      <ThreadPrimitive.Viewport
+        turnAnchor="top"
+        data-slot="aui_thread-viewport"
+        className="relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth"
+      >
+        <div className="mx-auto flex w-full max-w-(--thread-max-width) flex-1 flex-col px-4 pt-4">
+          <AuiIf condition={(s) => s.thread.isEmpty}>
+            <ThreadWelcome />
+          </AuiIf>
+
+          <div
+            data-slot="aui_message-group"
+            className="mb-10 flex flex-col gap-y-8 empty:hidden"
+          >
+            <ThreadPrimitive.Messages>
+              {() => <ThreadMessage />}
+            </ThreadPrimitive.Messages>
+          </div>
+
+          <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer bg-transparent sticky bottom-0 mt-auto flex flex-col gap-4 overflow-visible rounded-t-(--composer-radius) pb-4 md:pb-6">
+            <ThreadScrollToBottom />
+            <Composer />
+          </ThreadPrimitive.ViewportFooter>
+        </div>
+      </ThreadPrimitive.Viewport>
+    </ThreadPrimitive.Root>
+  );
+};
+
+const ThreadMessage: FC = () => {
+  const role = useAuiState((s) => s.message.role);
+  const isEditing = useAuiState((s) => s.message.composer.isEditing);
+
+  if (isEditing) return <EditComposer />;
+  if (role === "user") return <UserMessage />;
+  return <AssistantMessage />;
+};
+
+const ThreadScrollToBottom: FC = () => {
+  return (
+    <ThreadPrimitive.ScrollToBottom asChild>
+      <TooltipIconButton
+        tooltip="Scroll to bottom"
+        variant="outline"
+        className="aui-thread-scroll-to-bottom dark:border-border dark:bg-background dark:hover:bg-accent absolute -top-12 z-10 self-center rounded-full p-4 disabled:invisible"
+      >
+        <ArrowDownIcon />
+      </TooltipIconButton>
+    </ThreadPrimitive.ScrollToBottom>
+  );
+};
+
+const ThreadWelcome: FC = () => {
+  return (
+    <div className="aui-thread-welcome-root my-auto flex grow flex-col">
+      <div className="aui-thread-welcome-center flex w-full grow flex-col items-center justify-center">
+        <div className="aui-thread-welcome-message flex size-full flex-col justify-center px-4">
+          <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-2xl font-semibold duration-200">
+            Hello there!
+          </h1>
+          <p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-muted-foreground text-xl delay-75 duration-200">
+            How can I help you today?
+          </p>
+        </div>
+      </div>
+      <ThreadSuggestions />
+    </div>
+  );
+};
+
+const ThreadSuggestions: FC = () => {
+  return (
+    <div className="aui-thread-welcome-suggestions grid w-full gap-2 pb-4 @md:grid-cols-2">
+      <ThreadPrimitive.Suggestions>
+        {() => <ThreadSuggestionItem />}
+      </ThreadPrimitive.Suggestions>
+    </div>
+  );
+};
+
+const ThreadSuggestionItem: FC = () => {
+  return (
+    <div className="aui-thread-welcome-suggestion-display fade-in slide-in-from-bottom-2 animate-in fill-mode-both duration-200 nth-[n+3]:hidden @md:nth-[n+3]:block">
+      <SuggestionPrimitive.Trigger send asChild>
+        <Button
+          variant="ghost"
+          className="aui-thread-welcome-suggestion bg-background hover:bg-muted h-auto w-full flex-wrap items-start justify-start gap-1 rounded-3xl border px-4 py-3 text-start text-sm transition-colors @md:flex-col"
+        >
+          <SuggestionPrimitive.Title className="aui-thread-welcome-suggestion-text-1 font-medium" />
+          <SuggestionPrimitive.Description className="aui-thread-welcome-suggestion-text-2 text-muted-foreground empty:hidden" />
+        </Button>
+      </SuggestionPrimitive.Trigger>
+    </div>
+  );
+};
+
+const Composer: FC = () => {
+  return (
+    <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
+      <ComposerPrimitive.AttachmentDropzone asChild>
+        <div
+          data-slot="aui_composer-shell"
+          className="bg-background focus-within:border-ring/75 focus-within:ring-ring/20 data-[dragging=true]:border-ring data-[dragging=true]:bg-accent/50 flex w-full flex-col gap-2 rounded-(--composer-radius) border p-(--composer-padding) transition-shadow focus-within:ring-2 data-[dragging=true]:border-dashed"
+        >
+          <ComposerAttachments />
+          <ComposerPrimitive.Input
+            placeholder="Send a message..."
+            className="aui-composer-input placeholder:text-muted-foreground/80 max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none"
+            rows={1}
+            autoFocus
+            aria-label="Message input"
+          />
+          <ComposerAction />
+        </div>
+      </ComposerPrimitive.AttachmentDropzone>
+    </ComposerPrimitive.Root>
+  );
+};
+
+const ComposerAction: FC = () => {
+  return (
+    <div className="aui-composer-action-wrapper relative flex items-center justify-between">
+      <ComposerAddAttachment />
+      <AuiIf condition={(s) => !s.thread.isRunning}>
+        <ComposerPrimitive.Send asChild>
+          <TooltipIconButton
+            tooltip="Send message"
+            side="bottom"
+            type="button"
+            variant="default"
+            size="icon"
+            className="aui-composer-send size-8 rounded-full"
+            aria-label="Send message"
+          >
+            <ArrowUpIcon className="aui-composer-send-icon size-4" />
+          </TooltipIconButton>
+        </ComposerPrimitive.Send>
+      </AuiIf>
+      <AuiIf condition={(s) => s.thread.isRunning}>
+        <ComposerPrimitive.Cancel asChild>
+          <Button
+            type="button"
+            variant="default"
+            size="icon"
+            className="aui-composer-cancel size-8 rounded-full"
+            aria-label="Stop generating"
+          >
+            <SquareIcon className="aui-composer-cancel-icon size-3 fill-current" />
+          </Button>
+        </ComposerPrimitive.Cancel>
+      </AuiIf>
+    </div>
+  );
+};
+
+const MessageError: FC = () => {
+  return (
+    <MessagePrimitive.Error>
+      <ErrorPrimitive.Root className="aui-message-error-root border-destructive bg-destructive/10 text-destructive dark:bg-destructive/5 mt-2 rounded-md border p-3 text-sm dark:text-red-200">
+        <ErrorPrimitive.Message className="aui-message-error-message line-clamp-2" />
+      </ErrorPrimitive.Root>
+    </MessagePrimitive.Error>
+  );
+};
+
+const AssistantMessage: FC = () => {
+  // reserves space for action bar and compensates with `-mb` for consistent msg spacing
+  // keeps hovered action bar from shifting layout (autohide doesn't support absolute positioning well)
+  // for pt-[n] use -mb-[n + 6] & min-h-[n + 6] to preserve compensation
+  const ACTION_BAR_PT = "pt-1.5";
+  const ACTION_BAR_HEIGHT = `-mb-7.5 min-h-7.5 ${ACTION_BAR_PT}`;
+
+  return (
+    <MessagePrimitive.Root
+      data-slot="aui_assistant-message-root"
+      data-role="assistant"
+      className="fade-in slide-in-from-bottom-1 animate-in relative duration-150"
+    >
+      <div
+        data-slot="aui_assistant-message-content"
+        // [contain-intrinsic-size:auto_24px] fixes issue #4104, don't change without checking for regressions
+        className="text-foreground px-2 leading-relaxed wrap-break-word [contain-intrinsic-size:auto_24px] [content-visibility:auto]"
+      >
+        <MessagePrimitive.GroupedParts
+          groupBy={groupPartByType({
+            reasoning: ["group-chainOfThought", "group-reasoning"],
+            "tool-call": ["group-chainOfThought", "group-tool"],
+            "standalone-tool-call": [],
+          })}
+        >
+          {({ part, children }) => {
+            switch (part.type) {
+              case "group-chainOfThought":
+                return <div data-slot="aui_chain-of-thought">{children}</div>;
+              case "group-reasoning": {
+                const running = part.status.type === "running";
+                return (
+                  <ReasoningRoot defaultOpen={running}>
+                    <ReasoningTrigger active={running} />
+                    <ReasoningContent aria-busy={running}>
+                      <ReasoningText>{children}</ReasoningText>
+                    </ReasoningContent>
+                  </ReasoningRoot>
+                );
+              }
+              case "group-tool":
+                return (
+                  <ToolGroupRoot>
+                    <ToolGroupTrigger
+                      count={part.indices.length}
+                      active={part.status.type === "running"}
+                    />
+                    <ToolGroupContent>{children}</ToolGroupContent>
+                  </ToolGroupRoot>
+                );
+              case "text":
+                return <MarkdownText />;
+              case "reasoning":
+                return <Reasoning {...part} />;
+              case "tool-call":
+                return part.toolUI ?? <ToolFallback {...part} />;
+              case "indicator":
+                return (
+                  <span
+                    data-slot="aui_assistant-message-indicator"
+                    className="animate-pulse font-sans"
+                    aria-label="Assistant is working"
+                  >
+                    {"●"}
+                  </span>
+                );
+              default:
+                return null;
+            }
+          }}
+        </MessagePrimitive.GroupedParts>
+        <MessageError />
+      </div>
+
+      <div
+        data-slot="aui_assistant-message-footer"
+        className={cn("ms-2 flex items-center", ACTION_BAR_HEIGHT)}
+      >
+        <BranchPicker />
+        <AssistantActionBar />
+      </div>
+    </MessagePrimitive.Root>
+  );
+};
+
+const AssistantActionBar: FC = () => {
+  return (
+    <ActionBarPrimitive.Root
+      hideWhenRunning
+      autohide="not-last"
+      className="aui-assistant-action-bar-root text-muted-foreground col-start-3 row-start-2 -ms-1 flex gap-1"
+    >
+      <ActionBarPrimitive.Copy asChild>
+        <TooltipIconButton tooltip="Copy">
+          <AuiIf condition={(s) => s.message.isCopied}>
+            <CheckIcon />
+          </AuiIf>
+          <AuiIf condition={(s) => !s.message.isCopied}>
+            <CopyIcon />
+          </AuiIf>
+        </TooltipIconButton>
+      </ActionBarPrimitive.Copy>
+      <ActionBarPrimitive.Reload asChild>
+        <TooltipIconButton tooltip="Refresh">
+          <RefreshCwIcon />
+        </TooltipIconButton>
+      </ActionBarPrimitive.Reload>
+      <ActionBarMorePrimitive.Root>
+        <ActionBarMorePrimitive.Trigger asChild>
+          <TooltipIconButton
+            tooltip="More"
+            className="data-[state=open]:bg-accent"
+          >
+            <MoreHorizontalIcon />
+          </TooltipIconButton>
+        </ActionBarMorePrimitive.Trigger>
+        <ActionBarMorePrimitive.Content
+          side="bottom"
+          align="start"
+          className="aui-action-bar-more-content bg-popover text-popover-foreground z-50 min-w-32 overflow-hidden rounded-md border p-1 shadow-md"
+        >
+          <ActionBarPrimitive.ExportMarkdown asChild>
+            <ActionBarMorePrimitive.Item className="aui-action-bar-more-item hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none">
+              <DownloadIcon className="size-4" />
+              Export as Markdown
+            </ActionBarMorePrimitive.Item>
+          </ActionBarPrimitive.ExportMarkdown>
+        </ActionBarMorePrimitive.Content>
+      </ActionBarMorePrimitive.Root>
+    </ActionBarPrimitive.Root>
+  );
+};
+
+const UserMessage: FC = () => {
+  return (
+    <MessagePrimitive.Root
+      data-slot="aui_user-message-root"
+      className="fade-in slide-in-from-bottom-1 animate-in grid auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 duration-150 [contain-intrinsic-size:auto_60px] [content-visibility:auto] [&:where(>*)]:col-start-2"
+      data-role="user"
+    >
+      <UserMessageAttachments />
+
+      <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
+        <div className="aui-user-message-content peer bg-white/10 backdrop-blur-md border border-white/10 shadow-lg text-foreground rounded-2xl px-4 py-2.5 wrap-break-word empty:hidden">
+          <MessagePrimitive.Parts />
+        </div>
+        <div className="aui-user-action-bar-wrapper absolute start-0 top-1/2 -translate-x-full -translate-y-1/2 pe-2 peer-empty:hidden rtl:translate-x-full">
+          <UserActionBar />
+        </div>
+      </div>
+
+      <BranchPicker
+        data-slot="aui_user-branch-picker"
+        className="col-span-full col-start-1 row-start-3 -me-1 justify-end"
+      />
+    </MessagePrimitive.Root>
+  );
+};
+
+const UserActionBar: FC = () => {
+  return (
+    <ActionBarPrimitive.Root
+      hideWhenRunning
+      autohide="not-last"
+      className="aui-user-action-bar-root flex flex-col items-end"
+    >
+      <ActionBarPrimitive.Edit asChild>
+        <TooltipIconButton tooltip="Edit" className="aui-user-action-edit p-4">
+          <PencilIcon />
+        </TooltipIconButton>
+      </ActionBarPrimitive.Edit>
+    </ActionBarPrimitive.Root>
+  );
+};
+
+const EditComposer: FC = () => {
+  return (
+    <MessagePrimitive.Root
+      data-slot="aui_edit-composer-wrapper"
+      className="flex flex-col px-2"
+    >
+      <ComposerPrimitive.Root className="aui-edit-composer-root bg-muted ms-auto flex w-full max-w-[85%] flex-col rounded-2xl">
+        <ComposerPrimitive.Input
+          className="aui-edit-composer-input text-foreground min-h-14 w-full resize-none bg-transparent p-4 text-sm outline-none"
+          autoFocus
+        />
+        <div className="aui-edit-composer-footer mx-3 mb-3 flex items-center gap-2 self-end">
+          <ComposerPrimitive.Cancel asChild>
+            <Button variant="ghost" size="sm">
+              Cancel
+            </Button>
+          </ComposerPrimitive.Cancel>
+          <ComposerPrimitive.Send asChild>
+            <Button size="sm">Update</Button>
+          </ComposerPrimitive.Send>
+        </div>
+      </ComposerPrimitive.Root>
+    </MessagePrimitive.Root>
+  );
+};
+
+const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({
+  className,
+  ...rest
+}) => {
+  return (
+    <BranchPickerPrimitive.Root
+      hideWhenSingleBranch
+      className={cn(
+        "aui-branch-picker-root text-muted-foreground -ms-2 me-2 inline-flex items-center text-xs",
+        className,
+      )}
+      {...rest}
+    >
+      <BranchPickerPrimitive.Previous asChild>
+        <TooltipIconButton tooltip="Previous">
+          <ChevronLeftIcon />
+        </TooltipIconButton>
+      </BranchPickerPrimitive.Previous>
+      <span className="aui-branch-picker-state font-medium">
+        <BranchPickerPrimitive.Number /> / <BranchPickerPrimitive.Count />
+      </span>
+      <BranchPickerPrimitive.Next asChild>
+        <TooltipIconButton tooltip="Next">
+          <ChevronRightIcon />
+        </TooltipIconButton>
+      </BranchPickerPrimitive.Next>
+    </BranchPickerPrimitive.Root>
+  );
+};
+</file>
+
+<file path="src/components/assistant-ui/tool-fallback.tsx">
+"use client";
+
+import { memo, useCallback, useRef, useState } from "react";
+import {
+  AlertCircleIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  LoaderIcon,
+  XCircleIcon,
+} from "lucide-react";
+import {
+  useScrollLock,
+  type ToolCallMessagePartStatus,
+  type ToolCallMessagePartComponent,
+} from "@assistant-ui/react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
+
+const ANIMATION_DURATION = 200;
+
+export type ToolFallbackRootProps = Omit<
+  React.ComponentProps<typeof Collapsible>,
+  "open" | "onOpenChange"
+> & {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  defaultOpen?: boolean;
+};
+
+function ToolFallbackRoot({
+  className,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  defaultOpen = false,
+  children,
+  ...props
+}: ToolFallbackRootProps) {
+  const collapsibleRef = useRef<HTMLDivElement>(null);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+  const lockScroll = useScrollLock(collapsibleRef, ANIMATION_DURATION);
+
+  const isControlled = controlledOpen !== undefined;
+  const isOpen = isControlled ? controlledOpen : uncontrolledOpen;
+
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        lockScroll();
+      }
+      if (!isControlled) {
+        setUncontrolledOpen(open);
+      }
+      controlledOnOpenChange?.(open);
+    },
+    [lockScroll, isControlled, controlledOnOpenChange],
+  );
+
+  return (
+    <Collapsible
+      ref={collapsibleRef}
+      data-slot="tool-fallback-root"
+      open={isOpen}
+      onOpenChange={handleOpenChange}
+      className={cn(
+        "aui-tool-fallback-root group/tool-fallback-root w-full rounded-lg border py-3",
+        className,
+      )}
+      style={
+        {
+          "--animation-duration": `${ANIMATION_DURATION}ms`,
+        } as React.CSSProperties
+      }
+      {...props}
+    >
+      {children}
+    </Collapsible>
+  );
+}
+
+type ToolStatus = ToolCallMessagePartStatus["type"];
+
+const statusIconMap: Record<ToolStatus, React.ElementType> = {
+  running: LoaderIcon,
+  complete: CheckIcon,
+  incomplete: XCircleIcon,
+  "requires-action": AlertCircleIcon,
+};
+
+function ToolFallbackTrigger({
+  toolName,
+  status,
+  className,
+  ...props
+}: React.ComponentProps<typeof CollapsibleTrigger> & {
+  toolName: string;
+  status?: ToolCallMessagePartStatus;
+}) {
+  const statusType = status?.type ?? "complete";
+  const isRunning = statusType === "running";
+  const isCancelled =
+    status?.type === "incomplete" && status.reason === "cancelled";
+
+  const Icon = statusIconMap[statusType];
+  const label = isCancelled ? "Cancelled tool" : "Used tool";
+
+  return (
+    <CollapsibleTrigger
+      data-slot="tool-fallback-trigger"
+      className={cn(
+        "aui-tool-fallback-trigger group/trigger flex w-full items-center gap-2 px-4 text-sm transition-colors",
+        className,
+      )}
+      {...props}
+    >
+      <Icon
+        data-slot="tool-fallback-trigger-icon"
+        className={cn(
+          "aui-tool-fallback-trigger-icon size-4 shrink-0",
+          isCancelled && "text-muted-foreground",
+          isRunning && "animate-spin",
+        )}
+      />
+      <span
+        data-slot="tool-fallback-trigger-label"
+        className={cn(
+          "aui-tool-fallback-trigger-label-wrapper relative inline-block grow text-start leading-none",
+          isCancelled && "text-muted-foreground line-through",
+        )}
+      >
+        <span>
+          {label}: <b>{toolName}</b>
+        </span>
+        {isRunning && (
+          <span
+            aria-hidden
+            data-slot="tool-fallback-trigger-shimmer"
+            className="aui-tool-fallback-trigger-shimmer shimmer pointer-events-none absolute inset-0 motion-reduce:animate-none"
+          >
+            {label}: <b>{toolName}</b>
+          </span>
+        )}
+      </span>
+      <ChevronDownIcon
+        data-slot="tool-fallback-trigger-chevron"
+        className={cn(
+          "aui-tool-fallback-trigger-chevron size-4 shrink-0",
+          "transition-transform duration-(--animation-duration) ease-out",
+          "group-data-[state=closed]/trigger:-rotate-90",
+          "group-data-[state=open]/trigger:rotate-0",
+        )}
+      />
+    </CollapsibleTrigger>
+  );
+}
+
+function ToolFallbackContent({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof CollapsibleContent>) {
+  return (
+    <CollapsibleContent
+      data-slot="tool-fallback-content"
+      className={cn(
+        "aui-tool-fallback-content relative overflow-hidden text-sm outline-none",
+        "group/collapsible-content ease-out",
+        "data-[state=closed]:animate-collapsible-up",
+        "data-[state=open]:animate-collapsible-down",
+        "data-[state=closed]:fill-mode-forwards",
+        "data-[state=closed]:pointer-events-none",
+        "data-[state=open]:duration-(--animation-duration)",
+        "data-[state=closed]:duration-(--animation-duration)",
+        className,
+      )}
+      {...props}
+    >
+      <div className="mt-3 flex flex-col gap-2 border-t pt-2">{children}</div>
+    </CollapsibleContent>
+  );
+}
+
+function ToolFallbackArgs({
+  argsText,
+  className,
+  ...props
+}: React.ComponentProps<"div"> & {
+  argsText?: string;
+}) {
+  if (!argsText) return null;
+
+  return (
+    <div
+      data-slot="tool-fallback-args"
+      className={cn("aui-tool-fallback-args px-4", className)}
+      {...props}
+    >
+      <pre className="aui-tool-fallback-args-value whitespace-pre-wrap">
+        {argsText}
+      </pre>
+    </div>
+  );
+}
+
+function ToolFallbackResult({
+  result,
+  className,
+  ...props
+}: React.ComponentProps<"div"> & {
+  result?: unknown;
+}) {
+  if (result === undefined) return null;
+
+  return (
+    <div
+      data-slot="tool-fallback-result"
+      className={cn(
+        "aui-tool-fallback-result border-t border-dashed px-4 pt-2",
+        className,
+      )}
+      {...props}
+    >
+      <p className="aui-tool-fallback-result-header font-semibold">Result:</p>
+      <pre className="aui-tool-fallback-result-content whitespace-pre-wrap">
+        {typeof result === "string" ? result : JSON.stringify(result, null, 2)}
+      </pre>
+    </div>
+  );
+}
+
+function ToolFallbackError({
+  status,
+  className,
+  ...props
+}: React.ComponentProps<"div"> & {
+  status?: ToolCallMessagePartStatus;
+}) {
+  if (status?.type !== "incomplete") return null;
+
+  const error = status.error;
+  const errorText = error
+    ? typeof error === "string"
+      ? error
+      : JSON.stringify(error)
+    : null;
+
+  if (!errorText) return null;
+
+  const isCancelled = status.reason === "cancelled";
+  const headerText = isCancelled ? "Cancelled reason:" : "Error:";
+
+  return (
+    <div
+      data-slot="tool-fallback-error"
+      className={cn("aui-tool-fallback-error px-4", className)}
+      {...props}
+    >
+      <p className="aui-tool-fallback-error-header text-muted-foreground font-semibold">
+        {headerText}
+      </p>
+      <p className="aui-tool-fallback-error-reason text-muted-foreground">
+        {errorText}
+      </p>
+    </div>
+  );
+}
+
+const ToolFallbackImpl: ToolCallMessagePartComponent = ({
+  toolName,
+  argsText,
+  result,
+  status,
+}) => {
+  const isCancelled =
+    status?.type === "incomplete" && status.reason === "cancelled";
+
+  return (
+    <ToolFallbackRoot
+      className={cn(isCancelled && "border-muted-foreground/30 bg-muted/30")}
+    >
+      <ToolFallbackTrigger toolName={toolName} status={status} />
+      <ToolFallbackContent>
+        <ToolFallbackError status={status} />
+        <ToolFallbackArgs
+          argsText={argsText}
+          className={cn(isCancelled && "opacity-60")}
+        />
+        {!isCancelled && <ToolFallbackResult result={result} />}
+      </ToolFallbackContent>
+    </ToolFallbackRoot>
+  );
+};
+
+const ToolFallback = memo(
+  ToolFallbackImpl,
+) as unknown as ToolCallMessagePartComponent & {
+  Root: typeof ToolFallbackRoot;
+  Trigger: typeof ToolFallbackTrigger;
+  Content: typeof ToolFallbackContent;
+  Args: typeof ToolFallbackArgs;
+  Result: typeof ToolFallbackResult;
+  Error: typeof ToolFallbackError;
+};
+
+ToolFallback.displayName = "ToolFallback";
+ToolFallback.Root = ToolFallbackRoot;
+ToolFallback.Trigger = ToolFallbackTrigger;
+ToolFallback.Content = ToolFallbackContent;
+ToolFallback.Args = ToolFallbackArgs;
+ToolFallback.Result = ToolFallbackResult;
+ToolFallback.Error = ToolFallbackError;
+
+export {
+  ToolFallback,
+  ToolFallbackRoot,
+  ToolFallbackTrigger,
+  ToolFallbackContent,
+  ToolFallbackArgs,
+  ToolFallbackResult,
+  ToolFallbackError,
+};
+</file>
+
+<file path="src/components/assistant-ui/tool-group.tsx">
+"use client";
+
+import {
+  memo,
+  useCallback,
+  useRef,
+  useState,
+  type FC,
+  type PropsWithChildren,
+} from "react";
+import { ChevronDownIcon, LoaderIcon } from "lucide-react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { useScrollLock } from "@assistant-ui/react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
+
+const ANIMATION_DURATION = 200;
+
+const toolGroupVariants = cva("aui-tool-group-root group/tool-group w-full", {
+  variants: {
+    variant: {
+      outline: "rounded-lg border py-3",
+      ghost: "",
+      muted: "border-muted-foreground/30 bg-muted/30 rounded-lg border py-3",
+    },
+  },
+  defaultVariants: { variant: "outline" },
+});
+
+export type ToolGroupRootProps = Omit<
+  React.ComponentProps<typeof Collapsible>,
+  "open" | "onOpenChange"
+> &
+  VariantProps<typeof toolGroupVariants> & {
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    defaultOpen?: boolean;
+  };
+
+function ToolGroupRoot({
+  className,
+  variant,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  defaultOpen = false,
+  children,
+  ...props
+}: ToolGroupRootProps) {
+  const collapsibleRef = useRef<HTMLDivElement>(null);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+  const lockScroll = useScrollLock(collapsibleRef, ANIMATION_DURATION);
+
+  const isControlled = controlledOpen !== undefined;
+  const isOpen = isControlled ? controlledOpen : uncontrolledOpen;
+
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        lockScroll();
+      }
+      if (!isControlled) {
+        setUncontrolledOpen(open);
+      }
+      controlledOnOpenChange?.(open);
+    },
+    [lockScroll, isControlled, controlledOnOpenChange],
+  );
+
+  return (
+    <Collapsible
+      ref={collapsibleRef}
+      data-slot="tool-group-root"
+      data-variant={variant ?? "outline"}
+      open={isOpen}
+      onOpenChange={handleOpenChange}
+      className={cn(
+        toolGroupVariants({ variant }),
+        "group/tool-group-root",
+        className,
+      )}
+      style={
+        {
+          "--animation-duration": `${ANIMATION_DURATION}ms`,
+        } as React.CSSProperties
+      }
+      {...props}
+    >
+      {children}
+    </Collapsible>
+  );
+}
+
+function ToolGroupTrigger({
+  count,
+  active = false,
+  className,
+  ...props
+}: React.ComponentProps<typeof CollapsibleTrigger> & {
+  count: number;
+  active?: boolean;
+}) {
+  const label = `${count} tool ${count === 1 ? "call" : "calls"}`;
+
+  return (
+    <CollapsibleTrigger
+      data-slot="tool-group-trigger"
+      className={cn(
+        "aui-tool-group-trigger group/trigger flex items-center gap-2 text-sm transition-colors",
+        "group-data-[variant=outline]/tool-group-root:w-full group-data-[variant=outline]/tool-group-root:px-4",
+        "group-data-[variant=muted]/tool-group-root:w-full group-data-[variant=muted]/tool-group-root:px-4",
+        className,
+      )}
+      {...props}
+    >
+      {active && (
+        <LoaderIcon
+          data-slot="tool-group-trigger-loader"
+          className="aui-tool-group-trigger-loader size-4 shrink-0 animate-spin"
+        />
+      )}
+      <span
+        data-slot="tool-group-trigger-label"
+        className={cn(
+          "aui-tool-group-trigger-label-wrapper relative inline-block text-start leading-none font-medium",
+          "group-data-[variant=outline]/tool-group-root:grow",
+          "group-data-[variant=muted]/tool-group-root:grow",
+        )}
+      >
+        <span>{label}</span>
+        {active && (
+          <span
+            aria-hidden
+            data-slot="tool-group-trigger-shimmer"
+            className="aui-tool-group-trigger-shimmer shimmer pointer-events-none absolute inset-0 motion-reduce:animate-none"
+          >
+            {label}
+          </span>
+        )}
+      </span>
+      <ChevronDownIcon
+        data-slot="tool-group-trigger-chevron"
+        className={cn(
+          "aui-tool-group-trigger-chevron size-4 shrink-0",
+          "transition-transform duration-(--animation-duration) ease-out",
+          "group-data-[state=closed]/trigger:-rotate-90",
+          "group-data-[state=open]/trigger:rotate-0",
+        )}
+      />
+    </CollapsibleTrigger>
+  );
+}
+
+function ToolGroupContent({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof CollapsibleContent>) {
+  return (
+    <CollapsibleContent
+      data-slot="tool-group-content"
+      className={cn(
+        "aui-tool-group-content relative overflow-hidden text-sm outline-none",
+        "group/collapsible-content ease-out",
+        "data-[state=closed]:animate-collapsible-up",
+        "data-[state=open]:animate-collapsible-down",
+        "data-[state=closed]:fill-mode-forwards",
+        "data-[state=closed]:pointer-events-none",
+        "data-[state=open]:duration-(--animation-duration)",
+        "data-[state=closed]:duration-(--animation-duration)",
+        className,
+      )}
+      {...props}
+    >
+      <div
+        className={cn(
+          "mt-2 flex flex-col gap-2",
+          "group-data-[variant=outline]/tool-group-root:mt-3 group-data-[variant=outline]/tool-group-root:border-t group-data-[variant=outline]/tool-group-root:px-4 group-data-[variant=outline]/tool-group-root:pt-3",
+          "group-data-[variant=muted]/tool-group-root:mt-3 group-data-[variant=muted]/tool-group-root:border-t group-data-[variant=muted]/tool-group-root:px-4 group-data-[variant=muted]/tool-group-root:pt-3",
+        )}
+      >
+        {children}
+      </div>
+    </CollapsibleContent>
+  );
+}
+
+type ToolGroupComponent = FC<
+  PropsWithChildren<{ startIndex: number; endIndex: number }>
+> & {
+  Root: typeof ToolGroupRoot;
+  Trigger: typeof ToolGroupTrigger;
+  Content: typeof ToolGroupContent;
+};
+
+const ToolGroupImpl: FC<
+  PropsWithChildren<{ startIndex: number; endIndex: number }>
+> = ({ children, startIndex, endIndex }) => {
+  const toolCount = endIndex - startIndex + 1;
+
+  return (
+    <ToolGroupRoot>
+      <ToolGroupTrigger count={toolCount} />
+      <ToolGroupContent>{children}</ToolGroupContent>
+    </ToolGroupRoot>
+  );
+};
+
+/**
+ * @deprecated This wrapper targets the legacy `components.ToolGroup` prop
+ * on `<MessagePrimitive.Parts>`. Use `<MessagePrimitive.GroupedParts>` with
+ * a `groupBy` returning `"group-tool"` and compose `ToolGroupRoot` /
+ * `ToolGroupTrigger` / `ToolGroupContent` directly. See `thread.tsx`.
+ */
+const ToolGroup = memo(ToolGroupImpl) as unknown as ToolGroupComponent;
+
+ToolGroup.displayName = "ToolGroup";
+ToolGroup.Root = ToolGroupRoot;
+ToolGroup.Trigger = ToolGroupTrigger;
+ToolGroup.Content = ToolGroupContent;
+
+export {
+  ToolGroup,
+  ToolGroupRoot,
+  ToolGroupTrigger,
+  ToolGroupContent,
+  toolGroupVariants,
+};
+</file>
+
+<file path="src/components/assistant-ui/tooltip-icon-button.tsx">
+"use client";
+
+import { type ComponentPropsWithRef, forwardRef } from "react";
+import { Slot } from "radix-ui";
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+export type TooltipIconButtonProps = ComponentPropsWithRef<typeof Button> & {
+  tooltip: string;
+  side?: "top" | "bottom" | "left" | "right";
+};
+
+export const TooltipIconButton = forwardRef<
+  HTMLButtonElement,
+  TooltipIconButtonProps
+>(({ children, tooltip, side = "bottom", className, ...rest }, ref) => {
+  return (
+    <TooltipProvider delayDuration={0}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            {...rest}
+            className={cn("aui-button-icon size-6 p-1", className)}
+            ref={ref}
+          >
+            <Slot.Slottable>{children}</Slot.Slottable>
+            <span className="aui-sr-only sr-only">{tooltip}</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side={side}>{tooltip}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+});
+
+TooltipIconButton.displayName = "TooltipIconButton";
+</file>
+
+<file path="src/components/ProceduralBackground.tsx">
+import { useEffect, useRef } from 'react';
+import * as THREE from 'three';
+
+export default function ProceduralBackground() {
+    const mountRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!mountRef.current) return;
+
+        // Scene Setup
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x09090b, 0.0015);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 30;
+
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        mountRef.current.appendChild(renderer.domElement);
+
+        // Procedural Particle System (Sovereign Data Nodes)
+        const particleCount = 1500;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+
+        const color1 = new THREE.Color(0x3b82f6); // Blue
+        const color2 = new THREE.Color(0x8b5cf6); // Purple
+
+        for (let i = 0; i < particleCount * 3; i += 3) {
+            positions[i] = (Math.random() - 0.5) * 100;
+            positions[i + 1] = (Math.random() - 0.5) * 100;
+            positions[i + 2] = (Math.random() - 0.5) * 100;
+
+            const mixedColor = color1.clone().lerp(color2, Math.random());
+            colors[i] = mixedColor.r;
+            colors[i + 1] = mixedColor.g;
+            colors[i + 2] = mixedColor.b;
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        // Custom Shader Material for glowing dots
+        const material = new THREE.PointsMaterial({
+            size: 0.3,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const particles = new THREE.Points(geometry, material);
+        scene.add(particles);
+
+        // Animation Loop with Hardware Acceleration
+        let mouseX = 0;
+        let mouseY = 0;
+
+        const windowHalfX = window.innerWidth / 2;
+        const windowHalfY = window.innerHeight / 2;
+
+        const onDocumentMouseMove = (event: MouseEvent) => {
+            mouseX = (event.clientX - windowHalfX) * 0.05;
+            mouseY = (event.clientY - windowHalfY) * 0.05;
+        };
+
+        document.addEventListener('mousemove', onDocumentMouseMove);
+
+        // Use performance.now() for elapsed time — no external import needed
+        const startTime = performance.now();
+        let lastTime = startTime;
+
+        const animate = () => {
+            requestAnimationFrame(animate);
+            const now = performance.now();
+            const elapsedTime = (now - startTime) / 1000;
+            lastTime = now;
+
+            particles.rotation.y += 0.002;
+            particles.rotation.x += 0.001;
+
+            // Spring physics interpolation for camera movement
+            camera.position.x += (mouseX - camera.position.x) * 0.02;
+            camera.position.y += (-mouseY - camera.position.y) * 0.02;
+            camera.lookAt(scene.position);
+
+            // Undulate particles using accumulated elapsed time
+            const posArr = particles.geometry.attributes.position.array as Float32Array;
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                posArr[i3 + 1] += Math.sin(elapsedTime + posArr[i3]) * 0.01;
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+
+            renderer.render(scene, camera);
+        };
+
+        animate();
+
+        // Dynamic Recalculation via ResizeObserver
+        const resizeObserver = new ResizeObserver(() => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        resizeObserver.observe(document.body);
+
+        return () => {
+            document.removeEventListener('mousemove', onDocumentMouseMove);
+            resizeObserver.disconnect();
+            mountRef.current?.removeChild(renderer.domElement);
+            geometry.dispose();
+            material.dispose();
+            renderer.dispose();
+        };
+    }, []);
+
+    return <div ref={mountRef} className="fixed inset-0 z-[-2] pointer-events-none" />;
+}
+</file>
+
+<file path="src/components/ui/avatar.tsx">
+"use client"
+
+import * as React from "react"
+import { Avatar as AvatarPrimitive } from "radix-ui"
+
+import { cn } from "@/lib/utils"
+
+function Avatar({
+  className,
+  size = "default",
+  ...props
+}: React.ComponentProps<typeof AvatarPrimitive.Root> & {
+  size?: "default" | "sm" | "lg"
+}) {
+  return (
+    <AvatarPrimitive.Root
+      data-slot="avatar"
+      data-size={size}
+      className={cn(
+        "group/avatar relative flex size-8 shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=lg]:size-10 data-[size=sm]:size-6 dark:after:mix-blend-lighten",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function AvatarImage({
+  className,
+  ...props
+}: React.ComponentProps<typeof AvatarPrimitive.Image>) {
+  return (
+    <AvatarPrimitive.Image
+      data-slot="avatar-image"
+      className={cn(
+        "aspect-square size-full rounded-full object-cover",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function AvatarFallback({
+  className,
+  ...props
+}: React.ComponentProps<typeof AvatarPrimitive.Fallback>) {
+  return (
+    <AvatarPrimitive.Fallback
+      data-slot="avatar-fallback"
+      className={cn(
+        "flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground group-data-[size=sm]/avatar:text-xs",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function AvatarBadge({ className, ...props }: React.ComponentProps<"span">) {
+  return (
+    <span
+      data-slot="avatar-badge"
+      className={cn(
+        "absolute right-0 bottom-0 z-10 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground bg-blend-color ring-2 ring-background select-none",
+        "group-data-[size=sm]/avatar:size-2 group-data-[size=sm]/avatar:[&>svg]:hidden",
+        "group-data-[size=default]/avatar:size-2.5 group-data-[size=default]/avatar:[&>svg]:size-2",
+        "group-data-[size=lg]/avatar:size-3 group-data-[size=lg]/avatar:[&>svg]:size-2",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function AvatarGroup({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="avatar-group"
+      className={cn(
+        "group/avatar-group flex -space-x-2 *:data-[slot=avatar]:ring-2 *:data-[slot=avatar]:ring-background",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function AvatarGroupCount({
+  className,
+  ...props
+}: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="avatar-group-count"
+      className={cn(
+        "relative flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm text-muted-foreground ring-2 ring-background group-has-data-[size=lg]/avatar-group:size-10 group-has-data-[size=sm]/avatar-group:size-6 [&>svg]:size-4 group-has-data-[size=lg]/avatar-group:[&>svg]:size-5 group-has-data-[size=sm]/avatar-group:[&>svg]:size-3",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export {
+  Avatar,
+  AvatarImage,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+  AvatarBadge,
+}
+</file>
+
+<file path="src/components/ui/button.tsx">
+import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+import { Slot } from "radix-ui"
+
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        outline:
+          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+        ghost:
+          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+        destructive:
+          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default:
+          "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        icon: "size-8",
+        "icon-xs":
+          "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm":
+          "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
+        "icon-lg": "size-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+function Button({
+  className,
+  variant = "default",
+  size = "default",
+  asChild = false,
+  ...props
+}: React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean
+  }) {
+  const Comp = asChild ? Slot.Root : "button"
+
+  return (
+    <Comp
+      data-slot="button"
+      data-variant={variant}
+      data-size={size}
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  )
+}
+
+export { Button, buttonVariants }
+</file>
+
+<file path="src/components/ui/collapsible.tsx">
+import { Collapsible as CollapsiblePrimitive } from "radix-ui"
+
+function Collapsible({
+  ...props
+}: React.ComponentProps<typeof CollapsiblePrimitive.Root>) {
+  return <CollapsiblePrimitive.Root data-slot="collapsible" {...props} />
+}
+
+function CollapsibleTrigger({
+  ...props
+}: React.ComponentProps<typeof CollapsiblePrimitive.CollapsibleTrigger>) {
+  return (
+    <CollapsiblePrimitive.CollapsibleTrigger
+      data-slot="collapsible-trigger"
+      {...props}
+    />
+  )
+}
+
+function CollapsibleContent({
+  ...props
+}: React.ComponentProps<typeof CollapsiblePrimitive.CollapsibleContent>) {
+  return (
+    <CollapsiblePrimitive.CollapsibleContent
+      data-slot="collapsible-content"
+      {...props}
+    />
+  )
+}
+
+export { Collapsible, CollapsibleTrigger, CollapsibleContent }
+</file>
+
+<file path="src/components/ui/dialog.tsx">
+"use client"
+
+import * as React from "react"
+import { Dialog as DialogPrimitive } from "radix-ui"
+
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { XIcon } from "lucide-react"
+
+function Dialog({
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Root>) {
+  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+}
+
+function DialogTrigger({
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
+  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
+}
+
+function DialogPortal({
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Portal>) {
+  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
+}
+
+function DialogClose({
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Close>) {
+  return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
+}
+
+function DialogOverlay({
+  className,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Overlay>) {
+  return (
+    <DialogPrimitive.Overlay
+      data-slot="dialog-overlay"
+      className={cn(
+        "fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function DialogContent({
+  className,
+  children,
+  showCloseButton = true,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  showCloseButton?: boolean
+}) {
+  return (
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogPrimitive.Content
+        data-slot="dialog-content"
+        className={cn(
+          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          className
+        )}
+        {...props}
+      >
+        {children}
+        {showCloseButton && (
+          <DialogPrimitive.Close data-slot="dialog-close" asChild>
+            <Button
+              variant="ghost"
+              className="absolute top-2 right-2"
+              size="icon-sm"
+            >
+              <XIcon
+              />
+              <span className="sr-only">Close</span>
+            </Button>
+          </DialogPrimitive.Close>
+        )}
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  )
+}
+
+function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="dialog-header"
+      className={cn("flex flex-col gap-2", className)}
+      {...props}
+    />
+  )
+}
+
+function DialogFooter({
+  className,
+  showCloseButton = false,
+  children,
+  ...props
+}: React.ComponentProps<"div"> & {
+  showCloseButton?: boolean
+}) {
+  return (
+    <div
+      data-slot="dialog-footer"
+      className={cn(
+        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      {showCloseButton && (
+        <DialogPrimitive.Close asChild>
+          <Button variant="outline">Close</Button>
+        </DialogPrimitive.Close>
+      )}
+    </div>
+  )
+}
+
+function DialogTitle({
+  className,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Title>) {
+  return (
+    <DialogPrimitive.Title
+      data-slot="dialog-title"
+      className={cn(
+        "text-base leading-none font-medium",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function DialogDescription({
+  className,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Description>) {
+  return (
+    <DialogPrimitive.Description
+      data-slot="dialog-description"
+      className={cn(
+        "text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+}
+</file>
+
+<file path="src/components/ui/tooltip.tsx">
+import * as React from "react"
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import { cn } from "../../lib/utils"
+
+function TooltipProvider({
+  delayDuration = 0,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
+  return (
+    <TooltipPrimitive.Provider
+      data-slot="tooltip-provider"
+      delayDuration={delayDuration}
+      {...props}
+    />
+  )
+}
+
+function Tooltip({
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Root>) {
+  return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
+}
+
+function TooltipTrigger({
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
+  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />
+}
+
+function TooltipContent({
+  className,
+  sideOffset = 0,
+  children,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Content>) {
+  return (
+    <TooltipPrimitive.Portal>
+      <TooltipPrimitive.Content
+        data-slot="tooltip-content"
+        sideOffset={sideOffset}
+        className={cn(
+          "z-50 inline-flex w-fit max-w-xs origin-(--radix-tooltip-content-transform-origin) items-center gap-1.5 rounded-md bg-foreground px-3 py-1.5 text-xs text-background has-data-[slot=kbd]:pr-1.5 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 **:data-[slot=kbd]:relative **:data-[slot=kbd]:isolate **:data-[slot=kbd]:z-50 **:data-[slot=kbd]:rounded-sm data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:zoom-in-95 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          className
+        )}
+        {...props}
+      >
+        {children}
+        <TooltipPrimitive.Arrow className="z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px] bg-foreground fill-foreground" />
+      </TooltipPrimitive.Content>
+    </TooltipPrimitive.Portal>
+  )
+}
+
+export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger }
+</file>
+
+<file path="src/index.css">
+@import "tailwindcss";
+
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --radius: var(--radius);
+}
+
+@layer base {
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground overflow-hidden;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* View Transitions API */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.5s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Glassmorphism & Mesh Utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3), inset 0 0 20px rgba(255, 255, 255, 0.02);
+}
+
+.mesh-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at 50% 50%, rgba(29, 78, 216, 0.15), transparent 60%),
+    radial-gradient(circle at 80% 20%, rgba(147, 51, 234, 0.15), transparent 50%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+/* Preloader */
+#global-preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #09090b;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.loader-ring {
+  width: 60px;
+  height: 60px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 1s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Assistant UI Overrides for Shadcn Aesthetic */
+.aui-thread {
+  @apply w-full h-full flex flex-col bg-transparent;
+}
+
+.aui-message-list {
+  @apply flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.aui-message-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.aui-message-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.aui-message-list::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+}
+
+.aui-message {
+  @apply max-w-[85%] rounded-2xl p-4 leading-relaxed shadow-sm;
+}
+
+.aui-message[data-role="user"] {
+  @apply bg-primary text-primary-foreground ml-auto rounded-br-sm;
+}
+
+.aui-message[data-role="assistant"] {
+  @apply bg-secondary text-secondary-foreground mr-auto rounded-bl-sm border border-white/5;
+}
+
+.aui-composer {
+  @apply p-4 bg-transparent border-t border-white/5;
+}
+
+.aui-composer-input {
+  @apply w-full bg-black/20 border border-white/10 rounded-full px-6 py-3 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all text-white placeholder:text-white/40;
+}
+</file>
+
+<file path="src/lib/utils.ts">
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs));
+}
+</file>
+
+<file path="src/main.tsx">
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import 'tw-shimmer'
+import './index.css'
+import App from './App.tsx'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+</file>
+
+<file path="src/orchestrator.ts">
+import { StateGraph, START, END, Annotation } from "@langchain/langgraph";
+import { workers, runWorker } from "./rag/pipeline";
+
+export const GraphState = Annotation.Root({
+    query: Annotation<string>(),
+    context: Annotation<string>(),
+    answer: Annotation<string>(),
+});
+
+type ProgressCallback = (msg: any) => void;
+let activeProgressCallback: ProgressCallback | null = null;
+
+export function setActiveProgressCallback(cb: ProgressCallback | null) {
+    activeProgressCallback = cb;
+}
+
+// ── Retrieval Node ────────────────────────────────────────────────────────────
+// Step 1: embed the query into a dense vector via the embeddings worker.
+// Step 2: run hybrid (dense + BM25) search against the Orama index in the
+//         retrieval worker, returning the top-10 candidate chunks.
+// Step 3: cross-encoder rerank via the rerank worker, returning the top-5
+//         highest-confidence passages as the grounded context string.
+async function retrieveNode(state: typeof GraphState.State) {
+    console.log("--- RETRIEVE NODE ---");
+
+    // Push stage notifications into the active callback so the UI streaming
+    // queue in App.tsx picks them up and renders them in the chat thread.
+    const notify = (log: string) => {
+        if (activeProgressCallback) activeProgressCallback({ status: 'progress', log });
+    };
+
+    // 1. Embed query
+    notify('🔮 Embedding query vector...');
+    const embedResult = await runWorker<{ embedding: number[] }>(
+        workers.embed,
+        { text: state.query }
+    );
+
+    // 2. Hybrid search — retrieval worker emits its own progress log before resolving
+    const retrieveResult = await runWorker<{ candidates: { id: string; text: string; score: number }[] }>(
+        workers.retrieve,
+        {
+            action: "search",
+            queryText: state.query,
+            queryVector: embedResult.embedding,
+        }
+    );
+
+    const candidates = retrieveResult.candidates ?? [];
+
+    if (candidates.length === 0) {
+        console.warn("[Retrieve Node] No candidates found — context will be empty.");
+        notify('⚠️ No matching documents found in the index.');
+        return { context: "" };
+    }
+
+    notify(`📄 ${candidates.length} candidates retrieved — reranking...`);
+
+    // 3. Cross-encoder rerank — worker emits its own progress logs before resolving
+    const rerankResult = await runWorker<{ reranked: { text: string; rerankScore: number }[] }>(
+        workers.rerank,
+        { query: state.query, candidates }
+    );
+
+    const reranked = rerankResult.reranked ?? [];
+
+    // Join the top passages into a single context block for the LLM
+    const context = reranked.map((doc, i) => `[${i + 1}] ${doc.text}`).join("\n\n");
+
+    notify(`✅ Context ready — ${reranked.length} passage(s) grounded. Generating answer...`);
+    console.log(`[Retrieve Node] Built context from ${reranked.length} passage(s).`);
+    return { context };
+}
+
+// ── Generate Node ─────────────────────────────────────────────────────────────
+async function generateNode(state: typeof GraphState.State) {
+    console.log("--- GENERATE NODE ---");
+    try {
+        // runWorker() injects its own UUID id — do not pass one manually
+        const response = await runWorker<{ text: string }>(workers.inference, {
+            prompt: state.query,
+            context: state.context ?? "No context available.",
+        }, (msg) => {
+            if (activeProgressCallback) activeProgressCallback(msg);
+        });
+
+        return { answer: response.text };
+    } catch (error) {
+        console.error("Worker Execution Failed:", error);
+        throw error;
+    }
+}
+
+// ── Graph ─────────────────────────────────────────────────────────────────────
+// Full pipeline: START → retrieve → generate → END
+const workflow = new StateGraph(GraphState)
+    .addNode("retrieve", retrieveNode)
+    .addNode("generate", generateNode)
+    .addEdge(START, "retrieve")
+    .addEdge("retrieve", "generate")
+    .addEdge("generate", END);
+
+export const ragApp = workflow.compile();
+</file>
+
+<file path="src/rag/pipeline.ts">
+// src/rag/pipeline.ts
+// Workers are lazily initialized on first access to prevent top-level
+// module instantiation from crashing Vite HMR and non-browser environments.
+
+let _workers: {
+    embed: Worker;
+    retrieve: Worker;
+    rerank: Worker;
+    inference: Worker;
+} | null = null;
+
+export function getWorkers() {
+    if (!_workers) {
+        _workers = {
+            embed: new Worker(new URL('../workers/embeddings.worker.ts', import.meta.url), { type: 'module' }),
+            retrieve: new Worker(new URL('../workers/retrieval.worker.ts', import.meta.url), { type: 'module' }),
+            rerank: new Worker(new URL('../workers/rerank.worker.ts', import.meta.url), { type: 'module' }),
+            inference: new Worker(new URL('../workers/inference.worker.ts', import.meta.url), { type: 'module' }),
+        };
+    }
+    return _workers;
+}
+
+// Backwards-compatible named export so orchestrator.ts doesn't need changes
+export const workers = new Proxy({} as NonNullable<typeof _workers>, {
+    get(_target, prop) {
+        return getWorkers()[prop as keyof NonNullable<typeof _workers>];
+    }
+});
+
+export function runWorker<T>(worker: Worker, payload: Record<string, unknown>, onProgress?: (msg: any) => void): Promise<T> {
+    return new Promise((resolve, reject) => {
+        // Inject a UUID into every payload — used to match responses in the handler
+        const id = crypto.randomUUID();
+
+        const handler = (e: MessageEvent) => {
+            if (e.data.id === id) {
+                if (e.data.status === 'error') {
+                    worker.removeEventListener('message', handler);
+                    reject(new Error(e.data.message || "Unknown worker error"));
+                } else if (e.data.status === 'success') {
+                    worker.removeEventListener('message', handler);
+                    resolve(e.data as T);
+                } else if (e.data.status === 'progress' && onProgress) {
+                    onProgress(e.data);
+                }
+            }
+        };
+
+        worker.addEventListener('message', handler);
+
+        // Spread the caller's payload and attach the generated ID
+        // NOTE: Any `id` key in payload is intentionally overwritten here
+        worker.postMessage({ ...payload, id });
+    });
+}
+</file>
+
+<file path="src/storage.ts">
+// src/storage.ts
+import localforage from 'localforage';
+
+// 1. HOT TIER: IndexedDB for rapid, recent access
+export const hotStore = localforage.createInstance({
+    name: "SovereignRAG",
+    storeName: "hot_cache"
+});
+
+// 2. WARM TIER: Orama will handle our vector storage directly in the browser.
+
+// 3. COLD TIER: Stubbed Encrypted Cloud Backup
+export async function syncToColdStore(plaintextData: any, networkWorker: Worker) {
+    const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(JSON.stringify(plaintextData));
+
+    const ciphertextBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
+    networkWorker.postMessage({ ciphertext: ciphertextBuffer, iv });
+}
+</file>
+
+<file path="src/workers/embeddings.worker.ts">
+import { pipeline, env } from '@huggingface/transformers';
+
+// Disable remote fetching entirely for a fully sovereign local app
+env.allowRemoteModels = false;
+env.allowLocalModels = true;
+
+// Point directly to your public assets folder
+// Vite serves the public folder at the root "/" path
+env.localModelPath = '/models/Xenova/';
+
+let extractor: any = null;
+
+// Use standard self.onmessage syntax to match your existing pattern perfectly
+self.onmessage = async (event: MessageEvent) => {
+    const { text, id } = event.data;
+
+    try {
+        if (!extractor) {
+            // It looks for: /models/Xenova/all-MiniLM-L6-v2/config.json
+            extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+                device: 'webgpu',
+            });
+        }
+
+        const output = await extractor(text, { pooling: 'mean', normalize: true });
+        const embedding = Array.from(output.data);
+
+        self.postMessage({ id, embedding });
+    } catch (error: any) {
+        // Crucial for debugging local file-loading issues
+        self.postMessage({ id, error: `Worker error: ${error.message}` });
+    }
+};
+</file>
+
+<file path="src/workers/inference.worker.ts">
+import { Wllama } from '@wllama/wllama';
+
+let wllama: Wllama | null = null;
+
+const SYSTEM_INSTRUCTIONS = `You are Frank, an elite sovereign AI assistant operating completely client-side. Protect user privacy above all else. Use the provided context to answer questions accurately and concisely.`;
+
+// Define WASM asset paths — must match what's in /public/wasm/
+// AssetsPathConfig accepts: { default, 'single-thread/wllama.wasm', 'multi-thread/wllama.wasm' }
+// We only ship single-thread for now (no SharedArrayBuffer required in that mode)
+const CONFIG_PATHS = {
+    'single-thread/wllama.wasm': '/wasm/wllama.wasm',
+    default: '/wasm/wllama.wasm',
+};
+
+let initPromise: Promise<void> | null = null;
+let engineReady = false;
+
+function startInitialization() {
+    if (initPromise) return initPromise;
+    
+    console.log("[Inference Worker] Initializing Sovereign Wllama Engine...");
+    self.postMessage({ status: 'global_progress', log: 'Initializing Sovereign AI Engine...' });
+
+    initPromise = (async () => {
+        try {
+            wllama = new Wllama(CONFIG_PATHS);
+            const modelUrl = new URL("/models/Qwen3-1.7B-Magic_decensored.i1-Q4_K_M.gguf", self.location.origin).href;
+            
+            let lastPercent = -1;
+            await wllama.loadModelFromUrl(modelUrl, {
+                n_ctx: 4096,
+                progressCallback: ({ loaded, total }) => {
+                    const percent = Math.round((loaded / total) * 100);
+                    if (percent > lastPercent) {
+                        lastPercent = percent;
+                        self.postMessage({ status: 'global_progress', percent, log: `Downloading AI Weights: ${percent}%` });
+                    }
+                }
+            });
+
+            engineReady = true;
+            console.log("[Inference Worker] Local GGUF Engine Online.");
+            self.postMessage({ status: 'global_progress', percent: 100, log: 'Local AI Engine Online.' });
+        } catch (error) {
+            console.error("[Inference Worker] Engine Initialization Failed:", error);
+            self.postMessage({ status: 'global_progress', percent: 0, log: `Initialization Failed: ${(error as Error).message}` });
+        }
+    })();
+
+    return initPromise;
+}
+
+// Start immediately when the worker file is evaluated!
+startInitialization();
+
+self.onmessage = async (event: MessageEvent) => {
+    const { prompt, context, id } = event.data;
+
+    try {
+        if (!engineReady) {
+            self.postMessage({ id, status: 'progress', log: '⚙️ [Worker] Waiting for AI Engine to finish booting...' });
+            await initPromise;
+        }
+
+        // Build the full ChatML-formatted prompt string
+        const fullPrompt = [
+            `<|im_start|>system\n${SYSTEM_INSTRUCTIONS}\nAnswer using ONLY the provided context.<|im_end|>`,
+            `<|im_start|>user\nContext:\n${context}\n\nQuery:\n${prompt}<|im_end|>`,
+            `<|im_start|>assistant\n`,
+        ].join('\n');
+
+        let currentResponse = '';
+        await wllama.createCompletion({
+            prompt: fullPrompt,
+            max_tokens: 512,
+            stream: true,
+            onNewToken: (token, piece, currentText) => {
+                currentResponse = currentText;
+                self.postMessage({ id, status: 'progress', text: currentText });
+            },
+            stop: ['<|im_end|>'],
+        });
+
+        self.postMessage({ id, status: 'success', text: currentResponse });
+
+    } catch (error: any) {
+        console.error("[Inference Worker Error]:", error);
+        self.postMessage({ id, status: 'error', message: error.message });
+    }
+};
+</file>
+
+<file path="src/workers/network.worker.ts">
+// SEALED PIPELINE NETWORK WORKER
+// This worker only ever processes opaque encrypted ciphertext ArrayBuffers.
+// No plaintext ever enters this scope.
+
+self.onmessage = async (event: MessageEvent) => {
+    const { ciphertext, iv, id } = event.data;
+
+    try {
+        console.log("[Network Worker] Securely writing encrypted database block locally to storage layer...");
+
+        // Open/Create a browser IndexedDB instance locally
+        const dbRequest = indexedDB.open("SovereignRAG_Storage", 1);
+
+        dbRequest.onupgradeneeded = (e: any) => {
+            const database = e.target.result;
+            if (!database.objectStoreNames.contains("backups")) {
+                database.createObjectStore("backups", { keyPath: "id" });
+            }
+        };
+
+        dbRequest.onsuccess = (e: any) => {
+            const database = e.target.result;
+            const transaction = database.transaction("backups", "readwrite");
+            const store = transaction.objectStore("backups");
+
+            store.put({
+                id: id,
+                payload: ciphertext,
+                initializationVector: iv,
+                timestamp: Date.now()
+            });
+
+            transaction.oncomplete = () => {
+                console.log("[Network Worker] Write operation verified and finalized locally.");
+                self.postMessage({ id, status: "success" });
+            };
+        };
+
+        dbRequest.onerror = (e: any) => {
+            const error = e.target.error;
+            console.error("[Network Worker] IndexedDB open error:", error);
+            self.postMessage({ id, status: "error", message: error?.message || "IndexedDB open failed" });
+        };
+
+    } catch (error: any) {
+        console.error("[Network Worker Error]:", error);
+        self.postMessage({ id, status: "error", message: error.message });
+    }
+};
+</file>
+
+<file path="src/workers/rerank.worker.ts">
+import { pipeline, env } from '@huggingface/transformers';
+
+// Strictly enforce the air-gap for the Sovereign Core
+// Tell the library to look in the Vite public directory
+// Enforce strict offline operations
+env.allowRemoteModels = false;
+env.allowLocalModels = true;
+env.localModelPath = '/models/Xenova/';
+
+let reranker: any = null;
+
+self.onmessage = async (event: MessageEvent) => {
+    const { query, candidates, id } = event.data;
+
+    try {
+        if (!reranker) {
+            console.log("[Rerank Worker] Initializing Cross-Encoder...");
+            reranker = await pipeline('text-classification', 'Xenova/bge-reranker-v2-m3', {
+                device: 'webgpu'
+            });
+        }
+
+        // Notify the UI that cross-encoder reranking has started
+        self.postMessage({ id, status: 'progress', log: '🧠 Cross-encoder reranking candidates...' });
+
+        const reranked = [];
+        for (const doc of candidates) {
+            // Evaluates text queries alongside document data strings simultaneously
+            const result = await reranker(query, doc.text);
+            reranked.push({ ...doc, rerankScore: result[0].score });
+        }
+
+        // Sort by highest confidence scores
+        reranked.sort((a, b) => b.rerankScore - a.rerankScore);
+
+        // Notify the UI that reranking is complete
+        self.postMessage({ id, status: 'progress', log: `✨ Reranked — top ${Math.min(5, reranked.length)} passages selected.` });
+
+        // Return top 5 optimised matches; status:'success' required for runWorker to resolve
+        self.postMessage({ id, status: 'success', reranked: reranked.slice(0, 5) });
+    } catch (error: any) {
+        console.error("[Rerank Worker Error]:", error);
+        // status:'error' lets runWorker reject cleanly
+        self.postMessage({ id, status: 'error', message: error.message });
+    }
+};
+</file>
+
+<file path="src/workers/retrieval.worker.ts">
+import { create, insert, search } from '@orama/orama';
+
+let db: any = null;
+
+self.onmessage = async (event: MessageEvent) => {
+    const { action, id } = event.data;
+
+    try {
+        if (!db) {
+            db = await create({
+                schema: {
+                    text: 'string',
+                    embedding: 'vector[384]',
+                }
+            });
+        }
+
+        if (action === 'insert') {
+            const { text, embedding } = event.data;
+            await insert(db, { text, embedding });
+            self.postMessage({ id, status: 'success' });
+        }
+
+        if (action === 'search') {
+            const { queryVector, queryText } = event.data;
+
+            // Notify the UI that retrieval has started
+            self.postMessage({ id, status: 'progress', log: '🔍 Searching vector index...' });
+
+            const results = await search(db, {
+                term: queryText,
+                mode: 'hybrid',
+                vector: { value: queryVector, property: 'embedding' },
+                limit: 10
+            });
+
+            const candidates = results.hits.map(hit => ({
+                id: hit.id,
+                text: hit.document.text,
+                score: hit.score
+            }));
+
+            // status:'success' is required for runWorker to resolve the Promise
+            self.postMessage({ id, status: 'success', candidates });
+        }
+    } catch (error: any) {
+        // status:'error' lets runWorker reject cleanly
+        self.postMessage({ id, status: 'error', message: error.message });
+    }
+};
+</file>
+
+<file path="tailwind.config.js">
+/** @type {import('tailwindcss').Config} */
+export default {
+    content: [
+        "./index.html",
+        "./src/**/*.{js,ts,jsx,tsx}",
+    ],
+    theme: {
+        extend: {
+            colors: {
+                border: "hsl(var(--border))",
+                input: "hsl(var(--input))",
+                ring: "hsl(var(--ring))",
+                background: "hsl(var(--background))",
+                foreground: "hsl(var(--foreground))",
+                primary: {
+                    DEFAULT: "hsl(var(--primary))",
+                    foreground: "hsl(var(--primary-foreground))",
+                },
+                secondary: {
+                    DEFAULT: "hsl(var(--secondary))",
+                    foreground: "hsl(var(--secondary-foreground))",
+                },
+                muted: {
+                    DEFAULT: "hsl(var(--muted))",
+                    foreground: "hsl(var(--muted-foreground))",
+                },
+                accent: {
+                    DEFAULT: "hsl(var(--accent))",
+                    foreground: "hsl(var(--accent-foreground))",
+                },
+            },
+            borderRadius: {
+                lg: "var(--radius)",
+                md: "calc(var(--radius) - 2px)",
+                sm: "calc(var(--radius) - 4px)",
+            },
+            animation: {
+                "accordion-down": "accordion-down 0.2s ease-out",
+                "accordion-up": "accordion-up 0.2s ease-out",
+                "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+            },
+        },
+    },
+    plugins: [],
+}
+</file>
+
+<file path="test-chat.cjs">
+const { chromium } = require('playwright');
+const path = require('path');
+
+const DEV_URL = 'http://localhost:5173';
+const SCREENSHOT_PATH = path.join(__dirname, 'test-chat-screenshot.png');
+
+(async () => {
+  console.log('\n🔍 sovereign-rag — Playwright AI Chat Verification');
+  
+  const browser = await chromium.launch({
+    headless: true,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-web-security',
+      '--disable-features=IsolateOrigins,site-per-process',
+      '--unlimited-storage',
+    ],
+  });
+
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    bypassCSP: true,
+  });
+
+  const page = await context.newPage();
+
+  page.on('worker', worker => {
+    worker.on('console', msg => console.log(`  ⚙️ [worker] ${msg.text()}`));
+  });
+
+  page.on('worker', worker => {
+    worker.on('console', msg => console.log(`  ⚙️ [worker] ${msg.text()}`));
+  });
+
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') console.log(`  ❌ [console.error] ${msg.text()}`);
+  });
+
+  page.on('pageerror', (err) => {
+    console.log(`  💥 [pageerror] ${err.message}`);
+  });
+
+  console.log(`\n📡 Navigating to ${DEV_URL} ...`);
+  await page.goto(DEV_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
+
+  console.log(`⏳ Waiting for Local AI Engine to download and boot (up to 3 minutes)...`);
+  
+  // Wait until the "Downloading AI Weights: 100%" or similar disappears, or just wait 120s if we can't detect it reliably.
+  // Actually, let's just wait 120 seconds to be absolutely safe that it has finished downloading and booting.
+  await page.waitForTimeout(120000);
+
+  console.log(`💬 Typing a message...`);
+  const input = page.getByPlaceholder('Send a message...');
+  
+  if (await input.count() > 0) {
+    await input.fill('What is the capital of France?');
+    console.log(`⏎ Sending message...`);
+    await input.press('Enter');
+    
+    // Wait for the response to stream completely
+    console.log(`⏳ Waiting up to 60s for assistant response...`);
+    await page.waitForTimeout(60000); 
+    
+    const bodyText = await page.evaluate(() => document.body?.innerText?.substring(0, 1500) || '');
+    console.log(`\n📄 Chat Log Preview:\n  ${bodyText.replace(/\n/g, '\n  ')}`);
+  } else {
+    console.log(`❌ Could not find chat input box.`);
+  }
+
+  await page.screenshot({ path: SCREENSHOT_PATH, fullPage: true });
+  console.log(`\n📸 Final Verification Screenshot saved: ${SCREENSHOT_PATH}`);
+
+  await browser.close();
+})();
+</file>
+
+<file path="tsconfig.app.json">
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
+  },
+  "include": [
+    "src"
+  ]
+}
+</file>
+
+<file path="tsconfig.json">
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}
+</file>
+
+<file path="tsconfig.node.json">
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023"],
+    "module": "esnext",
+    "types": ["node"],
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    /* Linting */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["vite.config.ts"]
+}
+</file>
+
+<file path="vite.config.ts">
+import path from "path";
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+
+export default defineConfig({
+  plugins: [
+    react(),
+    tailwindcss(),
+  ],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  server: {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+    },
+  },
+  optimizeDeps: {
+    exclude: ['@wllama/wllama'],
+  }
+});
+</file>
+
+</files>
