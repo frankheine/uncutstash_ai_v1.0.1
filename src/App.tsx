@@ -9,6 +9,12 @@ import gsap from 'gsap';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PerimeterHalo } from './components/PerimeterHalo';
 import { ContextualOverlay } from './components/ContextualOverlay';
+import { UncutStashLogo, DataCartelLogo } from './components/ProceduralLogos';
+import { RAGPanel } from '@/components/RAGPanel';
+import { CommsPanel } from '@/components/CommsPanel';
+import { SpatialPanel } from './components/SpatialPanel';
+import { SidebarMenu } from './components/SidebarMenu';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
 export default function App() {
     const [engineReady, setEngineReady] = useState(false);
@@ -31,6 +37,17 @@ export default function App() {
     useEffect(() => {
         const handleWorkerMsg = (e: MessageEvent) => {
             const { status, log, percent } = e.data;
+
+            if (status === 'engine_ready') {
+                setDownloadPercent(100);
+                if (log) setDownloadLog(log);
+                setEngineOnline(true);
+                setTimeout(() => {
+                    setEngineReady(true);
+                }, 800);
+                return;
+            }
+
             if (status !== 'global_progress') return;
 
             receivedFirstMsg.current = true;
@@ -42,27 +59,6 @@ export default function App() {
             if (log && (log.includes('Failed') || log.includes('failed') || log.includes('Error'))) {
                 setBootError(log);
                 return;
-            }
-
-            if (percent === 100) {
-                setEngineOnline(true);
-                setTimeout(() => {
-                    const overlay = bootOverlayRef.current;
-                    const chat = chatPanelRef.current;
-                    if (overlay) {
-                        gsap.to(overlay, {
-                            opacity: 0, scale: 1.03,
-                            duration: 0.9, ease: "power3.inOut",
-                            onComplete: () => setEngineReady(true),
-                        });
-                    }
-                    if (chat) {
-                        gsap.fromTo(chat,
-                            { opacity: 0, y: 24 },
-                            { opacity: 1, y: 0, duration: 0.9, ease: "power3.out", delay: 0.3 }
-                        );
-                    }
-                }, 800);
             }
         };
 
@@ -78,6 +74,16 @@ export default function App() {
             if (watchdogRef.current) clearTimeout(watchdogRef.current);
         };
     }, []);
+
+    // ── UI Reveal Animation ───────────────────────────────────────────────────
+    useEffect(() => {
+        if (engineReady && chatPanelRef.current) {
+            gsap.fromTo(chatPanelRef.current,
+                { opacity: 0, y: 24 },
+                { opacity: 1, y: 0, duration: 0.9, ease: "power3.out", delay: 0.2 }
+            );
+        }
+    }, [engineReady]);
 
     // ── Smooth Scrolling ──────────────────────────────────────────────────────
     useEffect(() => {
@@ -131,6 +137,9 @@ export default function App() {
                             setGlobalStatus(currentLog);
                             if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
                             yield { content: [{ type: "text", text: `${currentLog}\n\n${displayedText}` }] };
+                        } else if (msg.delta !== undefined) {
+                            displayedText += msg.delta;
+                            yield { content: [{ type: "text", text: currentLog ? `${currentLog}\n\n${displayedText}` : displayedText }] };
                         } else if (msg.text !== undefined) {
                             displayedText = msg.text;
                             yield { content: [{ type: "text", text: currentLog ? `${currentLog}\n\n${displayedText}` : displayedText }] };
@@ -164,66 +173,33 @@ export default function App() {
                         <ProceduralBackground />
                     </div>
 
-                    {!engineReady && (
-                        <div
-                            ref={bootOverlayRef}
-                            className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 px-8"
-                            style={{ backdropFilter: 'blur(2px)' }}
-                        >
-                            <div className="relative w-20 h-20">
-                                <div className={`absolute inset-0 rounded-full border-2 ${bootError ? 'border-red-500/30' : 'border-violet-500/20'}`} />
-                                <div className={`absolute inset-0 rounded-full border-2 border-t-transparent ${bootError ? 'border-red-500' : 'border-violet-400 animate-spin'}`} />
-                                <div className={`absolute inset-2 rounded-full ${bootError ? 'bg-red-500/10' : 'bg-violet-500/10 animate-pulse'}`} />
-                            </div>
-
-                            {bootError ? (
-                                <div className="w-full max-w-sm flex flex-col gap-3">
-                                    <p className="text-red-400 text-xs font-mono text-center uppercase tracking-widest">
-                                        Initialization Failed
-                                    </p>
-                                    <div className="bg-black/50 border border-red-500/30 rounded-xl px-4 py-3 backdrop-blur-sm">
-                                        <p className="text-red-300 text-xs font-mono leading-relaxed break-words">
-                                            {bootError}
-                                        </p>
-                                    </div>
-                                    <p className="text-zinc-400 text-xs text-center font-mono">
-                                        Open DevTools → Console for the full stack trace.
-                                    </p>
-                                </div>
-                            ) : (
-                                <>
-                                    <p className="text-zinc-200 text-sm font-mono tracking-widest text-center max-w-sm leading-relaxed drop-shadow-lg">
-                                        {downloadLog}
-                                    </p>
-
-                                    {downloadPercent > 0 && (
-                                        <div className="w-full max-w-sm flex flex-col gap-2">
-                                            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm border border-white/10">
-                                                <div
-                                                    className="h-full rounded-full transition-all duration-300 ease-out"
-                                                    style={{
-                                                        width: `${downloadPercent}%`,
-                                                        background: engineOnline
-                                                            ? 'linear-gradient(90deg, #10b981, #34d399)'
-                                                            : 'linear-gradient(90deg, #7c3aed, #a78bfa)',
-                                                        boxShadow: engineOnline
-                                                            ? '0 0 12px #10b98166'
-                                                            : '0 0 12px #7c3aed66',
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="flex justify-between items-center text-xs font-mono">
-                                                <span className="text-white/40">AI Weights</span>
-                                                <span className={`font-semibold ${engineOnline ? 'text-emerald-400' : 'text-violet-300'}`}>
-                                                    {downloadPercent}%
-                                                </span>
-                                            </div>
-                                        </div>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    )}
+                    {/* Inline loading indicator when engine not ready */}
+{!engineReady && (
+  <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-10 pointer-events-none backdrop-blur-sm bg-black/60 transition-opacity duration-1000">
+    {/* Free-floating transparent video logo */}
+    <video 
+      src="/uncutstash-logo.mp4" 
+      autoPlay 
+      loop 
+      muted 
+      playsInline 
+      className="w-64 md:w-96 object-contain mix-blend-screen opacity-90 drop-shadow-[0_0_30px_rgba(139,92,246,0.3)] filter brightness-110"
+    />
+    <div className="flex flex-col items-center gap-3">
+      <div className="flex items-center gap-3 text-white/70 text-sm font-mono tracking-widest uppercase">
+        <div className={`w-2.5 h-2.5 rounded-full ${bootError ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,0.8)]'} animate-pulse`} />
+        <span>{downloadLog}</span>
+      </div>
+      {downloadPercent >= 0 && (
+        <div className="w-72 bg-white/5 rounded-full overflow-hidden border border-white/5 mt-1 h-1">
+          <div className="h-full bg-gradient-to-r from-violet-500/80 to-fuchsia-400/80 transition-all duration-500 ease-out relative" style={{ width: `${Math.max(downloadPercent, 2)}%` }}>
+            <div className="absolute top-0 right-0 bottom-0 w-12 bg-white/30 blur-[2px]" />
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
                     {engineReady && globalStatus && (
                         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
@@ -236,18 +212,26 @@ export default function App() {
 
                     <div
                         ref={chatPanelRef}
-                        className="relative z-10 w-full max-w-4xl mx-auto my-6 h-[calc(100dvh-3rem)] flex flex-col glass-panel rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/5"
+                        className="glass-panel relative z-10 w-full md:w-[95%] max-w-7xl mx-auto my-4 md:my-6 h-[calc(100dvh-2rem)] md:h-[calc(100dvh-3rem)] flex flex-col max-w-[100vw] overflow-hidden"
                         style={{ opacity: 0, pointerEvents: engineReady ? 'auto' : 'none' }}
                     >
-                        <Thread />
+                        <SpatialPanel depth={30} className="w-full h-full rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/5 border border-white/10 shadow-[0_30px_60px_-15px_rgba(139,92,246,0.3)]">
+                            <ResizablePanelGroup direction="horizontal" className="w-full h-full glass-panel">
+                                <ResizablePanel defaultSize={30} minSize={20} maxSize={50} className="hidden md:block">
+                                    <SidebarMenu onOpenSettings={() => { console.log('Open settings clicked') }} />
+                                </ResizablePanel>
+                                
+                                <ResizableHandle className="w-1 bg-white/5 hover:bg-violet-500/50 transition-colors" />
+                                
+                                <ResizablePanel defaultSize={75} className="bg-transparent relative">
+                                    <Thread />
+                                </ResizablePanel>
+                            </ResizablePanelGroup>
+                        </SpatialPanel>
                     </div>
 
-                    {engineReady && (
-                        <>
-                            <PerimeterHalo onTrigger={() => setIsOverlayOpen(true)} />
-                            <ContextualOverlay isOpen={isOverlayOpen} onClose={() => setIsOverlayOpen(false)} />
-                        </>
-                    )}
+                    <PerimeterHalo onTrigger={() => setIsOverlayOpen(true)} />
+                    <ContextualOverlay isOpen={isOverlayOpen} onClose={() => setIsOverlayOpen(false)} />
 
                 </div>
             </AssistantRuntimeProvider>

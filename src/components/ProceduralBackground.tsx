@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 // ── Vertex Shader ─────────────────────────────────────────────────────────────
@@ -57,13 +57,13 @@ interface LayerConfig {
 
 const LAYERS: LayerConfig[] = [
   // Distant dust — tiny, dense, slow
-  { count: 3000, spread: 350, minSize: 0.6,  maxSize: 1.4,  speed: 0.012, colors: [0x1e1b4b, 0x312e81] },
-  // Mid field — medium, violet/blue mix
-  { count: 1200, spread: 200, minSize: 1.2,  maxSize: 2.8,  speed: 0.022, colors: [0x4f46e5, 0x7c3aed] },
-  // Foreground bright stars — sparse, large, vivid
-  { count: 300,  spread: 120, minSize: 2.5,  maxSize: 5.0,  speed: 0.035, colors: [0xa78bfa, 0xe0e7ff] },
-  // Occasional hot blue/white giants
-  { count: 60,   spread: 150, minSize: 4.0,  maxSize: 8.0,  speed: 0.018, colors: [0xc7d2fe, 0xffffff] },
+  { count: 2000, spread: 400, minSize: 1.0,  maxSize: 3.0,  speed: 0.012, colors: [0x0f172a, 0x1e3a8a] },
+  // Mid field — medium, blue/cyan mix
+  { count: 800,  spread: 250, minSize: 3.0,  maxSize: 7.0,  speed: 0.022, colors: [0x2563eb, 0x60a5fa] },
+  // Foreground bright orbs — sparse, large, vivid
+  { count: 200,  spread: 150, minSize: 8.0,  maxSize: 16.0, speed: 0.035, colors: [0x93c5fd, 0xeff6ff] },
+  // Occasional massive blue/white giants
+  { count: 40,   spread: 120, minSize: 18.0, maxSize: 35.0, speed: 0.018, colors: [0xffffff, 0xdbeafe] },
 ];
 
 function buildLayer(cfg: LayerConfig) {
@@ -120,6 +120,12 @@ function buildLayer(cfg: LayerConfig) {
 
 export default function ProceduralBackground() {
   const mountRef = useRef<HTMLDivElement>(null);
+  const [motionEnabled, setMotionEnabled] = useState(true);
+  const motionRef = useRef(motionEnabled);
+
+  useEffect(() => {
+    motionRef.current = motionEnabled;
+  }, [motionEnabled]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -131,14 +137,22 @@ export default function ProceduralBackground() {
     const camera   = new THREE.PerspectiveCamera(
       70, window.innerWidth / window.innerHeight, 0.1, 2000
     );
-    camera.position.z = 80;
+    camera.position.z = 375; // Zoomed in to 375 per user request
 
-    const renderer = new THREE.WebGLRenderer({
-      alpha: true, antialias: true, powerPreference: 'high-performance',
-    });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    mountRef.current.appendChild(renderer.domElement);
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        alpha: true, antialias: true, powerPreference: 'high-performance',
+      });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.25;
+      mountRef.current.appendChild(renderer.domElement);
+    } catch (err) {
+      console.warn("WebGL not supported, falling back to static background.", err);
+      return;
+    }
 
     // ── Build star field layers ─────────────────────────────────────────────
     const layers = LAYERS.map(cfg => {
@@ -184,16 +198,20 @@ export default function ProceduralBackground() {
       animId = requestAnimationFrame(animate);
       const t = clock.getElapsedTime();
 
-      // Update each layer's time uniform (for twinkle) and slow drift rotation
+      // Update each layer's time uniform (for twinkle) and make drift rotation visible
       layers.forEach(({ points, mat, speed }) => {
         mat.uniforms.uTime.value = t;
-        points.rotation.y += speed * 0.001;
-        points.rotation.x += speed * 0.0004;
+        if (motionRef.current) {
+          points.rotation.y += speed * 2.0; // Extremely slow soothing rotation
+          points.rotation.x += speed * 1.5;
+        }
       });
 
-      // Smooth spring interpolation toward mouse
-      camera.position.x += (targetX * 6 - camera.position.x) * 0.025;
-      camera.position.y += (-targetY * 4 - camera.position.y) * 0.025;
+      // Smooth spring interpolation toward mouse — much wider tracking range
+      if (motionRef.current) {
+        camera.position.x += (targetX * 120 - camera.position.x) * 0.04;
+        camera.position.y += (-targetY * 80 - camera.position.y) * 0.04;
+      }
       camera.lookAt(scene.position);
 
       renderer.render(scene, camera);
@@ -222,5 +240,16 @@ export default function ProceduralBackground() {
     };
   }, []);
 
-  return <div ref={mountRef} className="fixed inset-0 z-[-2] pointer-events-none" />;
+  return (
+    <>
+      <div ref={mountRef} className="absolute inset-0 z-0 pointer-events-none" />
+      <button 
+        onClick={() => setMotionEnabled(!motionEnabled)}
+        className="fixed bottom-4 right-4 z-50 text-white/40 hover:text-white/90 bg-black/30 hover:bg-black/50 rounded-full px-3 py-1.5 text-xs border border-white/5 transition-all backdrop-blur-md cursor-pointer pointer-events-auto flex items-center gap-2 font-mono"
+      >
+        <div className={`w-2 h-2 rounded-full ${motionEnabled ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500'}`} />
+        MOTION
+      </button>
+    </>
+  );
 }

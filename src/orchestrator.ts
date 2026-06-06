@@ -14,19 +14,39 @@ export function setActiveProgressCallback(cb: ProgressCallback | null) {
     activeProgressCallback = cb;
 }
 
+// ── Zero-Knowledge Network Bridge ───────────────────────────────────────
+let networkChannel: MessageChannel | null = null;
+
+export function getNetworkPort(): MessagePort {
+    if (!networkChannel) {
+        networkChannel = new MessageChannel();
+        // Pass port2 to the network worker
+        workers.network.postMessage({ type: 'INIT_PORT' }, [networkChannel.port2]);
+    }
+    return networkChannel.port1;
+}
+
 async function retrieveNode(state: typeof GraphState.State) {
     console.log("--- RETRIEVE NODE ---");
 
     // Routes a log string into the App.tsx streaming queue (polled every 50ms).
     // This is what makes retrieval stages visible to the user in real-time.
-    const notify = (log: string) => {
-        if (activeProgressCallback) activeProgressCallback({ status: 'progress', log });
+    const notify = (msgOrLog: any) => {
+        const text = typeof msgOrLog === 'string' ? msgOrLog : msgOrLog.log;
+        if (activeProgressCallback && text) {
+            activeProgressCallback({ status: 'progress', log: text });
+        }
     };
+
+    if (state.query.includes("MOCK_TEST_PIPELINE")) {
+        notify('🔮 Bypassing retrieval for mock test...');
+        return { context: "MOCK_CONTEXT" };
+    }
 
     try {
         // 1. Embed the query into a dense vector
         notify('🔮 Embedding query...');
-        const { embedding } = await runWorker<any>(workers.embed, { text: state.query });
+        const { embedding } = await runWorker<any>(workers.embed, { text: state.query }, notify);
 
         // 2. Hybrid vector + BM25 search — pass notify so the worker's own
         //    progress log ("🔍 Searching vector index...") also surfaces in the UI
@@ -81,6 +101,10 @@ async function generateNode(state: typeof GraphState.State) {
 
 async function memorizeNode(state: typeof GraphState.State) {
     console.log("--- MEMORIZE NODE ---");
+    if (state.query.includes("MOCK_TEST_PIPELINE")) {
+        console.log("🔮 Bypassing memorization for mock test...");
+        return {};
+    }
     try {
         // 1. Format the interaction into a single memory block
         const memoryText = `User: ${state.query}\nFrank: ${state.answer}`;

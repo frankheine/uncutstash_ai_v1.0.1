@@ -11,7 +11,7 @@ export const hotStore = localforage.createInstance({
 
 // 3. COLD TIER: Stubbed Encrypted Cloud Backup
 export async function syncToColdStore(plaintextData: any, networkWorker: Worker) {
-    const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+    const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const encoded = new TextEncoder().encode(JSON.stringify(plaintextData));
 

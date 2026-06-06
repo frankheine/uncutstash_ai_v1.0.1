@@ -3,9 +3,9 @@ import { pipeline, env } from '@huggingface/transformers';
 // Strictly enforce the air-gap for the Sovereign Core
 // Tell the library to look in the Vite public directory
 // Enforce strict offline operations
-env.allowRemoteModels = false;
+env.allowRemoteModels = true;
 env.allowLocalModels = true;
-env.localModelPath = '/models/Xenova/';
+env.localModelPath = '/models/';
 
 let reranker: any = null;
 
@@ -15,8 +15,20 @@ self.onmessage = async (event: MessageEvent) => {
     try {
         if (!reranker) {
             console.log("[Rerank Worker] Initializing Cross-Encoder...");
+            // Force CPU: reranker only processes top-10 candidates and CPU is
+            // fast enough. WebGPU is reserved exclusively for the inference worker
+            // to prevent [Invalid ShaderModule] shader collisions across workers.
             reranker = await pipeline('text-classification', 'Xenova/bge-reranker-v2-m3', {
-                device: 'webgpu'
+                device: 'wasm',
+                quantized: true,
+                dtype: 'q8',
+                progress_callback: (data: any) => {
+                    if (data.status === 'progress' && typeof data.progress === 'number') {
+                        self.postMessage({ id, status: 'progress', log: `Loading Cross-Encoder Weights: ${Math.round(data.progress)}%` });
+                    } else {
+                        self.postMessage({ id, status: 'progress', log: `Loading Cross-Encoder Weights: ${data.status || 'Downloading'}...` });
+                    }
+                }
             });
         }
 

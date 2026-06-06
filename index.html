@@ -1,18 +1,42 @@
 <!DOCTYPE html>
-<html lang="en" class="dark bg-zinc-950 text-white">
+<html lang="en">
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sovereign RAG Terminal</title>
+  <link rel="icon" type="image/png" href="/UNCUTstash_Logo_120.png" />
+  <link rel="apple-touch-icon" href="/UNCUTstash_Logo_120.png" />
+  <link rel="datacartel_logo" href="/DATAcartel-logo.png" />
+  <link rel="UNCUTstash_logo" href="/UNCUTstash_Logo_512.png" />
+  <link rel="UNCUTstash_icon" href="/UNCUTstash_icon_120.png" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <title>UNCUTstash AI</title>
+
+  <style>
+    /* Embedded style block to eliminate flashing during cold boots on device screen */
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #000000;
+      color: #ffffff;
+      font-family: monospace;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+  </style>
 </head>
 
 <body>
-  <!-- This is where React will mount your App.tsx -->
   <div id="root"></div>
 
-  <!-- CRITICAL FIX: Point Vite to the TypeScript React entry file -->
   <script type="module" src="/src/main.tsx"></script>
 </body>
 
