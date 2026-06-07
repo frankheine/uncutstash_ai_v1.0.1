@@ -1,5 +1,5 @@
-export type { }; // Forces TypeScript to treat this file as an isolated module
-declare const self: ServiceWorkerGlobalScope; // Explicitly re-maps the global 'self' keyword
+export type { }; // Lowercase 'export' fixes module parsing
+declare const self: ServiceWorkerGlobalScope; // Maps the global 'self' keyword cleanly
 
 const MODEL_CACHE_NAME = "uncutstash-ai-models-v1";
 
@@ -33,6 +33,7 @@ self.addEventListener("fetch", (event) => {
                 }
 
                 // Cache miss execution path: acquire via network connection and write to local disk
+                // Cache miss execution path: acquire via network connection and write to local disk
                 try {
                     const networkResponse = await fetch(event.request);
 
@@ -52,7 +53,7 @@ self.addEventListener("fetch", (event) => {
                         statusText: "Service Unavailable"
                     });
                 }
-            })()
-        );
-    }
-});
+            })() // Closes the async IIFE function execution block
+        ); // Cleanly closes the event.respondWith( ... ) wrapper
+    } // Closes the if (matchesTarget) condition check
+}); // Perfectly closes the self.addEventListener("fetch", (event) => { block

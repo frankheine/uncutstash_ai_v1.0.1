@@ -176,32 +176,32 @@ export default function App() {
                     </div>
 
                     {/* Inline loading indicator when engine not ready */}
-{!engineReady && (
-  <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-10 pointer-events-none backdrop-blur-sm bg-black/60 transition-opacity duration-1000">
-    {/* Free-floating transparent video logo */}
-    <video 
-      src="/uncutstash-logo.mp4" 
-      autoPlay 
-      loop 
-      muted 
-      playsInline 
-      className="w-64 md:w-96 object-contain mix-blend-screen opacity-90 drop-shadow-[0_0_30px_rgba(139,92,246,0.3)] filter brightness-110"
-    />
-    <div className="flex flex-col items-center gap-3">
-      <div className="flex items-center gap-3 text-white/70 text-sm font-mono tracking-widest uppercase">
-        <div className={`w-2.5 h-2.5 rounded-full ${bootError ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,0.8)]'} animate-pulse`} />
-        <span>{downloadLog}</span>
-      </div>
-      {downloadPercent >= 0 && (
-        <div className="w-72 bg-white/5 rounded-full overflow-hidden border border-white/5 mt-1 h-1">
-          <div className="h-full bg-gradient-to-r from-violet-500/80 to-fuchsia-400/80 transition-all duration-500 ease-out relative" style={{ width: `${Math.max(downloadPercent, 2)}%` }}>
-            <div className="absolute top-0 right-0 bottom-0 w-12 bg-white/30 blur-[2px]" />
-          </div>
-        </div>
-      )}
-    </div>
-  </div>
-)}
+                    {!engineReady && (
+                        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-10 pointer-events-none backdrop-blur-sm bg-black/60 transition-opacity duration-1000">
+                            {/* Free-floating transparent video logo */}
+                            <video
+                                src="/uncutstash-logo.mp4"
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
+                                className="w-64 md:w-96 object-contain mix-blend-screen opacity-90 drop-shadow-[0_0_30px_rgba(139,92,246,0.3)] filter brightness-110"
+                            />
+                            <div className="flex flex-col items-center gap-3">
+                                <div className="flex items-center gap-3 text-white/70 text-sm font-mono tracking-widest uppercase">
+                                    <div className={`w-2.5 h-2.5 rounded-full ${bootError ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,0.8)]'} animate-pulse`} />
+                                    <span>{downloadLog}</span>
+                                </div>
+                                {downloadPercent >= 0 && (
+                                    <div className="w-72 bg-white/5 rounded-full overflow-hidden border border-white/5 mt-1 h-1">
+                                        <div className="h-full bg-gradient-to-r from-violet-500/80 to-fuchsia-400/80 transition-all duration-500 ease-out relative" style={{ width: `${Math.max(downloadPercent, 2)}%` }}>
+                                            <div className="absolute top-0 right-0 bottom-0 w-12 bg-white/30 blur-[2px]" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {engineReady && globalStatus && (
                         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
@@ -222,9 +222,9 @@ export default function App() {
                                 <ResizablePanel defaultSize={30} minSize={20} maxSize={50} className="hidden md:block">
                                     <SidebarMenu onOpenSettings={() => { console.log('Open settings clicked') }} />
                                 </ResizablePanel>
-                                
+
                                 <ResizableHandle className="w-1 bg-white/5 hover:bg-violet-500/50 transition-colors" />
-                                
+
                                 <ResizablePanel defaultSize={75} className="bg-transparent relative">
                                     <Thread />
                                 </ResizablePanel>
