@@ -3,7 +3,7 @@ import { pipeline, env } from '@huggingface/transformers';
 // Strictly enforce the air-gap for the Sovereign Core
 // Tell the library to look in the Vite public directory
 // Enforce strict offline operations
-env.allowRemoteModels = true;
+env.allowRemoteModels = false;
 env.allowLocalModels = true;
 env.localModelPath = '/models/';
 
@@ -29,13 +29,13 @@ self.onmessage = async (event: MessageEvent) => {
                         self.postMessage({ id, status: 'progress', log: `Loading Cross-Encoder Weights: ${data.status || 'Downloading'}...` });
                     }
                 }
-            });
+            } as any); // 👈 Added 'as any' to bypass strict model option validation
         }
 
         // Notify the UI that cross-encoder reranking has started
         self.postMessage({ id, status: 'progress', log: '🧠 Cross-encoder reranking candidates...' });
 
-        const reranked = [];
+        const reranked: any[] = []; // 👈 Added explicit any[] type to prevent 'never' array inference
         for (const doc of candidates) {
             // Evaluates text queries alongside document data strings simultaneously
             const result = await reranker(query, doc.text);
@@ -43,7 +43,7 @@ self.onmessage = async (event: MessageEvent) => {
         }
 
         // Sort by highest confidence scores
-        reranked.sort((a, b) => b.rerankScore - a.rerankScore);
+        reranked.sort((a: any, b: any) => b.rerankScore - a.rerankScore); // 👈 Added explicit types to parameters
 
         // Notify the UI that reranking is complete
         self.postMessage({ id, status: 'progress', log: `✨ Reranked — top ${Math.min(5, reranked.length)} passages selected.` });

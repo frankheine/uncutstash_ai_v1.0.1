@@ -1,24 +1,24 @@
-/// <reference lib="webworker" />
-declare const self: ServiceWorkerGlobalScope;
+/// <reference lib="WebWorker" />
+const sw = self as unknown as ServiceWorkerGlobalScope;
 
 const MODEL_CACHE_NAME = "uncutstash-ai-models-v1";
 
 // Simple helper array containing asset types we want to capture
 const TARGET_EXTENSIONS = [".onnx", ".wasm", ".bin", ".json"];
 
-self.addEventListener("install", () => {
+sw.addEventListener("install", () => {
     self.skipWaiting();
 });
 
-self.addEventListener("activate", (event) => {
+sw.addEventListener("activate", (event) => {
     event.waitUntil(self.clients.claim());
 });
 
 // Programmatic cache interception loop
-self.addEventListener("fetch", (event: FetchEvent) => {
+sw.addEventListener("fetch", (event) => {
     const url = new URL(event.request.url);
 
-    // Verify if the outgoing target match an asset type we manage
+// Verify if the outgoing target match an asset type we manage
     const matchesTarget = TARGET_EXTENSIONS.some(ext => url.pathname.endsWith(ext));
 
     if (matchesTarget) {

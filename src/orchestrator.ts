@@ -1,5 +1,6 @@
 import { StateGraph, START, END, Annotation } from "@langchain/langgraph";
-import { workers, runWorker } from "./rag/pipeline";
+import { workers as rawWorkers, runWorker } from "./rag/pipeline";
+const workers = rawWorkers as any;
 
 export const GraphState = Annotation.Root({
     query: Annotation<string>(),

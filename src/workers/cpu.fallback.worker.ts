@@ -38,10 +38,12 @@ self.onmessage = async (event: MessageEvent) => {
             const userPrompt = prompt || payload?.prompt || "";
 
             // Structure chat messages as an array of structured objects.
-            await wllamaInstance.createChatCompletion([
-                { role: 'system', content: systemInstructions || "You are an AI." },
-                { role: 'user', content: `Context:\n${safeContext}\n\nQuery:\n${userPrompt}` }
-            ], {
+            // Pass a single object {} that contains the messages array inside it
+            await wllamaInstance.createChatCompletion({
+                messages: [
+                    { role: 'system', content: systemInstructions || "You are an AI." },
+                    { role: 'user', content: `Context:\n${safeContext}\n\nQuery:\n${userPrompt}` }
+                ],
                 max_tokens: 512,
                 temperature: 0.2,
                 onNewToken: (token, piece, currentText) => {

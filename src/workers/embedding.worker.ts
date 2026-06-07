@@ -7,7 +7,7 @@ env.localModelPath = self.location.origin + '/models/';
 env.useBrowserCache = true;
 
 // 2. Force WASM execution binaries to resolve locally via the served public path
-env.backends.onnx.wasm.wasmPaths = self.location.origin + '/wasm/';
+env.backends.onnx.wasm!.wasmPaths = self.location.origin + '/wasm/'; // 👈 Added ! to ensure it isn't evaluated as undefined
 
 let extractor: any = null;
 
@@ -31,7 +31,7 @@ self.onmessage = async (event: MessageEvent) => {
                         self.postMessage({ id, status: 'progress', log: `Loading Embedding Weights: ${data.status || 'Downloading'}...` });
                     }
                 }
-            });
+            } as any); // 👈 Added 'as any' to bypass strict model option validation
         }
 
         const output = await extractor(text, { pooling: 'mean', normalize: true });

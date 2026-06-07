@@ -4,6 +4,7 @@
 import { CreateWebWorkerMLCEngine } from "@mlc-ai/web-llm";
 let gpuEngine: any = null;
 let cpuWorker: Worker | null = null;
+let activeEngine: any = null;
 
 const CACHED_SYSTEM_INSTRUCTIONS = `# SYSTEM INSTRUCTIONS 
 ## _Life Assistant, Intelligence Amplification, and Internet Grounding_
@@ -150,10 +151,10 @@ export async function initializePipeline(
         );
 
         // Instead, initialize the WebLLM engine with a draft model:
-        gpuEngine = await CreateWebWorkerMLCEngine(worker, "Llama-3.2-3B-Instruct-q4f16_1-MLC", {
+        gpuEngine = await CreateWebWorkerMLCEngine(worker, "SNOWflake_v1.2_UNCUTstash-3B", {
             initProgressCallback: (progress) => progressCallback(progress.text),
             speculativeConfig: {
-                draftModel: "Llama-3.2-1B-Instruct-q4f16_1-MLC", // The tiny model
+                draftModel: "SNOWflake_v1.2_UNCUTstash-1B", // The tiny model
                 draftLength: 4 // Verify 4 tokens per batch
             }
         });
@@ -180,7 +181,7 @@ export async function initializeComputeEngine() {
     if (hasWebGPU) {
         console.log("[Pipeline] WebGPU detected. Initializing Sovereign AI Engine...");
         const worker = new Worker(new URL('../workers/inference.worker.ts', import.meta.url), { type: 'module' });
-        webgpuEngine = await CreateWebWorkerMLCEngine(worker, "Llama-3.2-1B-Instruct-q4f16_1-MLC");
+        webgpuEngine = await CreateWebWorkerMLCEngine(worker, "SNOWflake_v1.2_UNCUTstash-1B");
         activeEngine = 'webgpu';
     } else {
         console.log("[Pipeline] WebGPU unavailable. Falling back to WASM CPU engine...");
@@ -194,7 +195,7 @@ export async function initializeComputeEngine() {
             };
             cpuWorker!.postMessage({
                 action: 'INITIALIZE',
-                payload: { modelUrl: '/models/Qwen2-0.5B-Instruct.gguf' } // Specify your GGUF path
+                payload: { modelUrl: '/models/SNOWflake_v1.2_UNCUTstash-1B.gguf' } // Specify your GGUF path
             });
         });
         activeEngine = 'cpu';
@@ -203,9 +204,9 @@ export async function initializeComputeEngine() {
 
 export const NAV_MODEL_CONFIG = {
     // mT5-Small equivalent for memory-resident Draft Model
-    draftModel: 'Qwen2-0.5B-Instruct-q4f16_1-MLC',
+    draftModel: 'SNOWflake_v1.2_UNCUTstash-1B',
     // Persistent disk-resident Target Model for verification
-    targetModel: 'Llama-3.2-3B-Instruct-q4f32_1-MLC'
+    targetModel: 'SNOWflake_v1.2_UNCUTstash-3B'
 };
 
 let _workers: {
