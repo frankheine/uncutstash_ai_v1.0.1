@@ -1,9 +1,17 @@
-/// <reference lib="webworker" />
-declare const self: ServiceWorkerGlobalScope;
+/// <reference lib="WebWorker" />
 
-const MODEL_CACHE_NAME = "uncutstash-ai-models-v1";
+// 1. Tell TS this file is a module so it doesn't pollute global scope
+export type {}; 
 
-// Simple helper array containing asset types we want to capture
+// 2. Cast the global self to a dedicated worker variable
+const sw = self as unknown as ServiceWorkerGlobalScope;
+
+// 3. Use 'sw' instead of 'self' for your event listeners
+sw.addEventListener('install', (event) => {
+  sw.skipWaiting();
+});
+
+const MODEL_CACHE_NAME = "uncutstash-ai- we want to capture
 const TARGET_EXTENSIONS = [".onnx", ".wasm", ".bin", ".json"];
 
 self.addEventListener("install", () => {
