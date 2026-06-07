@@ -22,9 +22,7 @@
     "noUnusedParameters": false,
     "noImplicitAny": false,
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     }
   },
   "include": [
