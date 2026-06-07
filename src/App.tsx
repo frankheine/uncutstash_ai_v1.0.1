@@ -10,7 +10,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { PerimeterHalo } from './components/PerimeterHalo';
 import { ContextualOverlay } from './components/ContextualOverlay';
 import { UncutStashLogo, DataCartelLogo } from './components/ProceduralLogos';
-import { RAGPanel } from '@/components/RAGPanel';
 import { CommsPanel } from '@/components/CommsPanel';
 import { SpatialPanel } from './components/SpatialPanel';
 import { SidebarMenu } from './components/SidebarMenu';
