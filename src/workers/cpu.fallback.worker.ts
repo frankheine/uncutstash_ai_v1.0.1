@@ -18,7 +18,7 @@ self.onmessage = async (event: MessageEvent) => {
         if (action === 'INITIALIZE' || type === 'INIT_CPU') {
             console.log("[CPU Fallback Worker] Booting WASM SIMD Engine...");
             // Automatically detect hardware concurrency for multithreading
-            const nThreads = Math.min(navigator.hardwareConcurrency ?? 4, 4);
+            const nThreads = navigator.hardwareConcurrency ? Math.max(1, navigator.hardwareConcurrency - 1) : 4;
 
             wllamaInstance = new Wllama(CONFIG_PATHS, { suppressNativeLog: true });
             await wllamaInstance.loadModelFromUrl(payload?.modelUrl || modelPath, {

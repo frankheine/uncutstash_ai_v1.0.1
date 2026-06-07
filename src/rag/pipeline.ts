@@ -150,12 +150,12 @@ export async function initializePipeline(
             { type: 'module' }
         );
 
-        // Instead, initialize the WebLLM engine with a draft model:
+        // Instead, initialize the WebLLM engine with a draft model for NAV (Speculative Decoding):
         gpuEngine = await CreateWebWorkerMLCEngine(worker, "SNOWflake_v1.2_UNCUTstash-3B", {
             initProgressCallback: (progress) => progressCallback(progress.text),
             speculativeConfig: {
-                draftModel: "SNOWflake_v1.2_UNCUTstash-1B", // The tiny model
-                draftLength: 4 // Verify 4 tokens per batch
+                draftModel: "SNOWflake_v1.2_UNCUTstash-1B", // The tiny model for rapid verification
+                draftLength: 4 // Verify 4 tokens per batch in parallel NAV
             }
         } as any);
     }
@@ -179,13 +179,25 @@ export async function initializeComputeEngine() {
     const hasWebGPU = await detectWebGPU();
 
     if (hasWebGPU) {
-        console.log("[Pipeline] WebGPU detected. Initializing Sovereign AI Engine...");
+        console.log(`🚀 WebGPU Detected 🚀
+    Initializing Private AI Engine:
+    UNCUTstash by DATAcartel Collective...`);
         const worker = new Worker(new URL('../workers/inference.worker.ts', import.meta.url), { type: 'module' });
-        gpuEngine = await CreateWebWorkerMLCEngine(worker, "SNOWflake_v1.2_UNCUTstash-1B");
-        activeEngine = 'webgpu';
+        gpuEngine = await CreateWebWorkerMLCEngine(worker, "SNOWflake_v1.2_UNCUTstash-1B", {
+            speculativeConfig: {
+                draftModel: "SNOWflake_v1.2_UNCUTstash-1B",
+                draftLength: 4
+            }
+        } as any);
+        activeEngine = 'gpuEngine';
     } else {
-        console.log("[Pipeline] WebGPU unavailable. Falling back to WASM CPU engine...");
-        cpuWorker = new Worker(new URL('../workers/cpu.fallback.worker.ts', import.meta.url), { type: 'module' });
+        console.log(`🐢 WebGPU Unavailable 🐢
+    Falling back to CPU engine
+    Processing speed of AI inquiries
+    will be significantly slower.`);
+        cpuWorker = new Worker(new URL('../workers/cpu.fallback.worker.ts', import.meta.url), {
+            type: 'module'
+        });
 
         // Wrap worker message in a promise for initialization
         await new Promise((resolve, reject) => {
@@ -193,12 +205,15 @@ export async function initializeComputeEngine() {
                 if (e.data.status === 'ready') resolve(true);
                 if (e.data.status === 'error') reject(e.data.message);
             };
+
             cpuWorker!.postMessage({
                 action: 'INITIALIZE',
-                payload: { modelUrl: '/models/SNOWflake_v1.2_UNCUTstash-1B.gguf' } // Specify your GGUF path
+                payload: { modelUrl: '/models/SNOWflake_v1.2_UNCUTstash-1B.gguf' }
             });
         });
-        activeEngine = 'cpu';
+
+        //  FIX 2: Assign the real fallback worker instance, not the string 'cpu'
+        activeEngine = cpuWorker;
     }
 }
 

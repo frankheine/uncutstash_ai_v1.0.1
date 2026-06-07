@@ -1,41 +1,45 @@
-import { useEffect, useState, useRef } from 'react';
+// src/App.tsx
+import { Suspense, useEffect, useState, useRef } from 'react';
 import { useLocalRuntime, AssistantRuntimeProvider } from "@assistant-ui/react";
 import { Thread } from "@/components/assistant-ui/thread";
 import { ragApp, setActiveProgressCallback } from './orchestrator';
-import { workers as rawWorkers } from './rag/pipeline';
-const workers = rawWorkers as any;
+import { workers } from './rag/pipeline';
 import ProceduralBackground from './components/ProceduralBackground';
 import Lenis from '@studio-freight/lenis';
 import gsap from 'gsap';
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PerimeterHalo } from './components/PerimeterHalo';
 import { ContextualOverlay } from './components/ContextualOverlay';
-import { UncutStashLogo, DataCartelLogo } from './components/ProceduralLogos';
-import { CommsPanel } from '@/components/CommsPanel';
-import { SpatialPanel } from './components/SpatialPanel';
 import { SidebarMenu } from './components/SidebarMenu';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { SpatialPanel } from './components/SpatialPanel';
 
 const PanelGroup = ResizablePanelGroup as any;
 
 export default function App() {
     const [engineReady, setEngineReady] = useState(false);
-    const bootOverlayRef = useRef<HTMLDivElement>(null);
     const chatPanelRef = useRef<HTMLDivElement>(null);
+    const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
 
-    const [downloadLog, setDownloadLog] = useState("Initializing Sovereign AI Engine...");
+    useEffect(() => {
+        const handleNavigation = () => {
+            setSessionId(crypto.randomUUID());
+        };
+        window.addEventListener('popstate', handleNavigation);
+        return () => window.removeEventListener('popstate', handleNavigation);
+    }, []);
+
+    const [downloadLog, setDownloadLog] = useState(`Initializing UNCUTstash AI
+Private Intelligence Engine...`);
     const [downloadPercent, setDownloadPercent] = useState(0);
-    const [engineOnline, setEngineOnline] = useState(false);
     const [bootError, setBootError] = useState<string | null>(null);
-
     const [globalStatus, setGlobalStatus] = useState<string | null>(null);
+    
     const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const receivedFirstMsg = useRef(false);
-
     const [isOverlayOpen, setIsOverlayOpen] = useState(false);
 
-    // ── Engine Boot Listener ──────────────────────────────────────────────────
     useEffect(() => {
         const handleWorkerMsg = (e: MessageEvent) => {
             const { status, log, percent } = e.data;
@@ -43,10 +47,13 @@ export default function App() {
             if (status === 'engine_ready') {
                 setDownloadPercent(100);
                 if (log) setDownloadLog(log);
-                setEngineOnline(true);
-                setTimeout(() => {
+                
+                // Trigger View Transition API for seamless state morphing
+                if (document.startViewTransition) {
+                    document.startViewTransition(() => setEngineReady(true));
+                } else {
                     setEngineReady(true);
-                }, 800);
+                }
                 return;
             }
 
@@ -58,15 +65,15 @@ export default function App() {
             if (log) setDownloadLog(log);
             if (typeof percent === 'number') setDownloadPercent(percent);
 
-            if (log && (log.includes('Failed') || log.includes('failed') || log.includes('Error'))) {
+            if (log && (log.toLowerCase().includes('failed') || log.toLowerCase().includes('error'))) {
                 setBootError(log);
-                return;
             }
         };
 
         watchdogRef.current = setTimeout(() => {
             if (!receivedFirstMsg.current) {
-                setBootError('Worker silent — open DevTools → Console for the error.');
+                setBootError(`Worker silent — open DevTools (F12)
+            → Console for the error.`)
             }
         }, 30_000);
 
@@ -77,23 +84,20 @@ export default function App() {
         };
     }, []);
 
-    // ── UI Reveal Animation ───────────────────────────────────────────────────
     useEffect(() => {
         if (engineReady && chatPanelRef.current) {
             gsap.fromTo(chatPanelRef.current,
-                { opacity: 0, y: 24 },
-                { opacity: 1, y: 0, duration: 0.9, ease: "power3.out", delay: 0.2 }
+                { opacity: 0, scale: 0.95, filter: 'blur(10px)' },
+                { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 1.2, ease: "expo.out" }
             );
         }
     }, [engineReady]);
 
-    // ── Smooth Scrolling ──────────────────────────────────────────────────────
     useEffect(() => {
         const lenis = new Lenis({
             duration: 1.2,
             easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
             orientation: 'vertical',
-            gestureOrientation: 'vertical',
             smoothWheel: true,
         });
 
@@ -102,11 +106,9 @@ export default function App() {
             requestAnimationFrame(raf);
         }
         requestAnimationFrame(raf);
-
         return () => lenis.destroy();
     }, []);
 
-    // ── Runtime ───────────────────────────────────────────────────────────────
     const runtime = useLocalRuntime({
         run: async function* ({ messages, abortSignal }) {
             try {
@@ -156,12 +158,9 @@ export default function App() {
 
                 if (error) {
                     yield { content: [{ type: "text", text: `System error: ${error.message || error}` }] };
-                    return;
                 }
             } catch (err: any) {
-                console.error("LangGraph Invocation Failed:", err);
                 yield { content: [{ type: "text", text: `System error: ${err.message || err}` }] };
-                return;
             }
         }
     });
@@ -169,33 +168,30 @@ export default function App() {
     return (
         <TooltipProvider>
             <AssistantRuntimeProvider runtime={runtime}>
-                <div className="relative flex h-screen w-full bg-zinc-950 overflow-hidden text-white">
+                <div className="relative flex h-[100dvh] w-full bg-zinc-950 overflow-hidden text-white selection:bg-violet-500/30">
 
                     <div className="absolute inset-0 z-0 pointer-events-none">
                         <ProceduralBackground />
                     </div>
 
-                    {/* Inline loading indicator when engine not ready */}
                     {!engineReady && (
-                        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-10 pointer-events-none backdrop-blur-sm bg-black/60 transition-opacity duration-1000">
-                            {/* Free-floating transparent video logo */}
-                            <video
-                                src="/uncutstash-logo.mp4"
-                                autoPlay
-                                loop
-                                muted
-                                playsInline
-                                className="w-64 md:w-96 object-contain mix-blend-screen opacity-90 drop-shadow-[0_0_30px_rgba(139,92,246,0.3)] filter brightness-110"
-                            />
-                            <div className="flex flex-col items-center gap-3">
-                                <div className="flex items-center gap-3 text-white/70 text-sm font-mono tracking-widest uppercase">
-                                    <div className={`w-2.5 h-2.5 rounded-full ${bootError ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,0.8)]'} animate-pulse`} />
+                        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-10 pointer-events-none backdrop-blur-md bg-black/40 transition-opacity duration-1000">
+                            <div className="relative w-48 h-48 flex items-center justify-center">
+                                <svg className="absolute inset-0 w-full h-full animate-spin-slow" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(139, 92, 246, 0.2)" strokeWidth="1"></circle>
+                                    <circle cx="50" cy="50" r="48" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeDasharray="300" strokeDashoffset="250" className="drop-shadow-[0_0_10px_rgba(139,92,246,0.8)]"></circle>
+                                </svg>
+                                <div className="text-4xl font-light tracking-widest text-violet-400">AI</div>
+                            </div>
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="flex items-center gap-3 text-white/80 text-xs font-mono tracking-widest uppercase">
+                                    <div className={`w-2 h-2 rounded-full ${bootError ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,0.8)]'} animate-pulse`} />
                                     <span>{downloadLog}</span>
                                 </div>
                                 {downloadPercent >= 0 && (
-                                    <div className="w-72 bg-white/5 rounded-full overflow-hidden border border-white/5 mt-1 h-1">
-                                        <div className="h-full bg-gradient-to-r from-violet-500/80 to-fuchsia-400/80 transition-all duration-500 ease-out relative" style={{ width: `${Math.max(downloadPercent, 2)}%` }}>
-                                            <div className="absolute top-0 right-0 bottom-0 w-12 bg-white/30 blur-[2px]" />
+                                    <div className="w-80 bg-white/5 rounded-full overflow-hidden border border-white/10 h-1.5">
+                                        <div className="h-full bg-gradient-to-r from-violet-600 to-fuchsia-500 transition-all duration-300 ease-out relative" style={{ width: `${Math.max(downloadPercent, 2)}%` }}>
+                                            <div className="absolute top-0 right-0 bottom-0 w-10 bg-white/40 blur-[2px]" />
                                         </div>
                                     </div>
                                 )}
@@ -204,29 +200,33 @@ export default function App() {
                     )}
 
                     {engineReady && globalStatus && (
-                        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
-                            <div className="glass-panel px-4 py-2 rounded-full border border-violet-500/30 flex items-center gap-3 shadow-lg shadow-violet-500/10">
-                                <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-                                <span className="text-xs font-mono text-violet-200 tracking-wide">{globalStatus}</span>
+                        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-40 pointer-events-none">
+                            <div className="glass-panel px-5 py-2.5 rounded-full border border-violet-500/40 flex items-center gap-3 shadow-[0_0_20px_rgba(139,92,246,0.2)] backdrop-blur-xl">
+                                <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse shadow-[0_0_8px_rgba(167,139,250,0.8)]" />
+                                <span className="text-xs font-mono text-violet-100 tracking-wider">{globalStatus}</span>
                             </div>
                         </div>
                     )}
 
                     <div
                         ref={chatPanelRef}
-                        className="glass-panel relative z-10 w-full md:w-[95%] max-w-7xl mx-auto my-4 md:my-6 h-[calc(100dvh-2rem)] md:h-[calc(100dvh-3rem)] flex flex-col max-w-[100vw] overflow-hidden"
+                        className="relative z-10 w-full md:w-[96%] max-w-7xl mx-auto my-4 md:my-6 h-[calc(100dvh-2rem)] md:h-[calc(100dvh-3rem)] flex flex-col overflow-hidden"
                         style={{ opacity: 0, pointerEvents: engineReady ? 'auto' : 'none' }}
                     >
-                        <SpatialPanel depth={30} className="w-full h-full rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/5 border border-white/10 shadow-[0_30px_60px_-15px_rgba(139,92,246,0.3)]">
+                        <SpatialPanel depth={20} className="w-full h-full rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10 border border-white/5 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]">
                             <PanelGroup direction="horizontal" className="w-full h-full glass-panel">
-                                <ResizablePanel defaultSize={30} minSize={20} maxSize={50} className="hidden md:block">
-                                    <SidebarMenu onOpenSettings={() => { console.log('Open settings clicked') }} />
+                                <ResizablePanel defaultSize={25} minSize={20} maxSize={40} className="hidden md:block bg-black/20">
+                                    <SidebarMenu onOpenSettings={() => { console.log('Settings') }} />
                                 </ResizablePanel>
 
-                                <ResizableHandle className="w-1 bg-white/5 hover:bg-violet-500/50 transition-colors" />
+                                <ResizableHandle className="w-[1px] bg-white/10 hover:bg-violet-500/50 transition-colors" />
 
                                 <ResizablePanel defaultSize={75} className="bg-transparent relative">
-                                    <Thread />
+                                    <Suspense fallback={<div className="flex h-full items-center justify-center text-violet-400/50 animate-pulse font-mono text-sm">Mounting Secure Boundary...</div>}>
+                                        <div key={sessionId} className="w-full h-full">
+                                            <Thread />
+                                        </div>
+                                    </Suspense>
                                 </ResizablePanel>
                             </PanelGroup>
                         </SpatialPanel>
@@ -235,6 +235,7 @@ export default function App() {
                     <PerimeterHalo onTrigger={() => setIsOverlayOpen(true)} />
                     <ContextualOverlay isOpen={isOverlayOpen} onClose={() => setIsOverlayOpen(false)} />
 
+                    {engineReady && <div className="engine-ready-indicator hidden" />}
                 </div>
             </AssistantRuntimeProvider>
         </TooltipProvider>

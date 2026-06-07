@@ -1,0 +1,87 @@
+/* styles.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+    --glass-bg: rgba(15, 23, 42, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.08);
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #020617;
+    overscroll-behavior: none;
+}
+
+h1, h2, h3, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Glassmorphism Utilities */
+.glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(6, 182, 212, 0.5);
+}
+
+/* Animations */
+.animate-spin-slow {
+    animation: spin 4s linear infinite;
+}
+
+.animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-glow {
+    0% { filter: drop-shadow(0 0 2px rgba(6, 182, 212, 0.4)); }
+    100% { filter: drop-shadow(0 0 12px rgba(6, 182, 212, 0.8)); }
+}
+
+/* Markdown Content Styling for AI Responses */
+.ai-content pre {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    margin: 0.5rem 0;
+}
+.ai-content code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875em;
+    color: #38bdf8;
+}
+.ai-content p {
+    margin-bottom: 0.75rem;
+}
+.ai-content p:last-child {
+    margin-bottom: 0;
+}
+
+/* View Transitions */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: 0.5s;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hardware Acceleration */
+.chat-message {
+    will-change: transform, opacity;
+}
