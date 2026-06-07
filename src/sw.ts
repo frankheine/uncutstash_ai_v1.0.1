@@ -1,24 +1,24 @@
-/// <reference lib="WebWorker" />
-const sw = self as unknown as ServiceWorkerGlobalScope;
+export type { }; // Forces TypeScript to treat this file as an isolated module
+declare const self: ServiceWorkerGlobalScope; // Explicitly re-maps the global 'self' keyword
 
 const MODEL_CACHE_NAME = "uncutstash-ai-models-v1";
 
 // Simple helper array containing asset types we want to capture
 const TARGET_EXTENSIONS = [".onnx", ".wasm", ".bin", ".json"];
 
-sw.addEventListener("install", () => {
+self.addEventListener("install", () => {
     self.skipWaiting();
 });
 
-sw.addEventListener("activate", (event) => {
+self.addEventListener("activate", (event) => {
     event.waitUntil(self.clients.claim());
 });
 
 // Programmatic cache interception loop
-sw.addEventListener("fetch", (event) => {
+self.addEventListener("fetch", (event) => {
     const url = new URL(event.request.url);
 
-// Verify if the outgoing target match an asset type we manage
+    // Verify if the outgoing target match an asset type we manage
     const matchesTarget = TARGET_EXTENSIONS.some(ext => url.pathname.endsWith(ext));
 
     if (matchesTarget) {
