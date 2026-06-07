@@ -14,7 +14,9 @@ import { UncutStashLogo, DataCartelLogo } from './components/ProceduralLogos';
 import { CommsPanel } from '@/components/CommsPanel';
 import { SpatialPanel } from './components/SpatialPanel';
 import { SidebarMenu } from './components/SidebarMenu';
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { ResizableHandle, ResizablePanel, PanelGroup } from "@/components/ui/resizable";
+
+const PanelGroup = PanelGroup as any;
 
 export default function App() {
     const [engineReady, setEngineReady] = useState(false);
@@ -216,7 +218,7 @@ export default function App() {
                         style={{ opacity: 0, pointerEvents: engineReady ? 'auto' : 'none' }}
                     >
                         <SpatialPanel depth={30} className="w-full h-full rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/5 border border-white/10 shadow-[0_30px_60px_-15px_rgba(139,92,246,0.3)]">
-                            <ResizablePanelGroup direction="horizontal" className="w-full h-full glass-panel">
+                            <PanelGroup direction="horizontal" className="w-full h-full glass-panel">
                                 <ResizablePanel defaultSize={30} minSize={20} maxSize={50} className="hidden md:block">
                                     <SidebarMenu onOpenSettings={() => { console.log('Open settings clicked') }} />
                                 </ResizablePanel>
@@ -226,7 +228,7 @@ export default function App() {
                                 <ResizablePanel defaultSize={75} className="bg-transparent relative">
                                     <Thread />
                                 </ResizablePanel>
-                            </ResizablePanelGroup>
+                            </PanelGroup>
                         </SpatialPanel>
                     </div>
 
