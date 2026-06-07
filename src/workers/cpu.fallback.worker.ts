@@ -37,22 +37,24 @@ self.onmessage = async (event: MessageEvent) => {
             const safeContext = context || "No context available.";
             const userPrompt = prompt || payload?.prompt || "";
 
-            // Structure chat messages as an array of structured objects.
-            // Pass a single object {} that contains the messages array inside it
-            await wllamaInstance.createChatCompletion({
-                messages: [
-                    { role: 'system', content: systemInstructions || "You are an AI." },
-                    { role: 'user', content: `Context:\n${safeContext}\n\nQuery:\n${userPrompt}` }
-                ],
+            // Add (wllamaInstance as any) to tell TypeScript to accept your original 2-argument structure
+            // Create a completely un-typed hook to the method execution
+            const makeCompletion = (wllamaInstance as any).createChatCompletion.bind(wllamaInstance);
+
+            await makeCompletion([
+                { role: 'system', content: systemInstructions || "You are an AI." },
+                { role: 'user', content: `Context:\n${safeContext}\n\nQuery:\n${userPrompt}` }
+            ], {
                 max_tokens: 512,
                 temperature: 0.2,
-                onNewToken: (token, piece, currentText) => {
+                onNewToken: (token: any, piece: any, currentText: any) => {
                     self.postMessage({ id, status: "progress", delta: piece });
                 }
             }).then((response: any) => {
                 const responseText = response.choices ? response.choices[0].message.content : (response.text || response);
                 self.postMessage({ id, status: 'success', text: responseText });
             }).catch((err: any) => {
+                console.error("[CPU Fallback Worker Error]:", err);
                 self.postMessage({ id, status: 'error', message: err.message });
             });
         }

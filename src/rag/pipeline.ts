@@ -157,7 +157,7 @@ export async function initializePipeline(
                 draftModel: "SNOWflake_v1.2_UNCUTstash-1B", // The tiny model
                 draftLength: 4 // Verify 4 tokens per batch
             }
-        });
+        } as any);
     }
 
     return { type: 'gpu', engine: gpuEngine };
@@ -181,7 +181,7 @@ export async function initializeComputeEngine() {
     if (hasWebGPU) {
         console.log("[Pipeline] WebGPU detected. Initializing Sovereign AI Engine...");
         const worker = new Worker(new URL('../workers/inference.worker.ts', import.meta.url), { type: 'module' });
-        webgpuEngine = await CreateWebWorkerMLCEngine(worker, "SNOWflake_v1.2_UNCUTstash-1B");
+        gpuEngine = await CreateWebWorkerMLCEngine(worker, "SNOWflake_v1.2_UNCUTstash-1B");
         activeEngine = 'webgpu';
     } else {
         console.log("[Pipeline] WebGPU unavailable. Falling back to WASM CPU engine...");
