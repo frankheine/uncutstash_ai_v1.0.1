@@ -1,7 +1,7 @@
 import { pipeline, env } from '@huggingface/transformers';
 
 // Enable remote fetching as a fallback in case local LFS pointer is corrupt
-env.allowRemoteModels = true;
+env.allowRemoteModels = false;
 env.allowLocalModels = true;
 env.localModelPath = self.location.origin + '/models/';
 env.useBrowserCache = true;

@@ -25,6 +25,7 @@
     "@types/three": "^0.184.1",
     "@wllama/wllama": "^3.4.1",
     "autoprefixer": "^10.5.0",
+    "bloom-filters": "^3.0.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.40.0",

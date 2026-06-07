@@ -39,11 +39,6 @@ async function retrieveNode(state: typeof GraphState.State) {
         }
     };
 
-    if (state.query.includes("MOCK_TEST_PIPELINE")) {
-        notify('🔮 Bypassing retrieval for mock test...');
-        return { context: "MOCK_CONTEXT" };
-    }
-
     try {
         // 1. Embed the query into a dense vector
         notify('🔮 Embedding query...');
@@ -102,10 +97,6 @@ async function generateNode(state: typeof GraphState.State) {
 
 async function memorizeNode(state: typeof GraphState.State) {
     console.log("--- MEMORIZE NODE ---");
-    if (state.query.includes("MOCK_TEST_PIPELINE")) {
-        console.log("🔮 Bypassing memorization for mock test...");
-        return {};
-    }
     try {
         // 1. Format the interaction into a single memory block
         const memoryText = `User: ${state.query}\nFrank: ${state.answer}`;

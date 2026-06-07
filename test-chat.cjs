@@ -42,13 +42,13 @@ const SCREENSHOT_PATH = path.join(__dirname, 'test-chat-screenshot.png');
   });
 
   console.log(`\n📡 Navigating to ${DEV_URL} ...`);
-  await page.goto(DEV_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
+  await page.goto(DEV_URL, { waitUntil: 'domcontentloaded', timeout: 120000 });
 
-  console.log(`⏳ Waiting for Local AI Engine to download and boot (up to 3 minutes)...`);
+  console.log(`⏳ Waiting for Local AI Engine to download and boot (up to 5 minutes)...`);
   
-  // Wait until the "Downloading AI Weights: 100%" or similar disappears, or just wait 120s if we can't detect it reliably.
-  // Actually, let's just wait 120 seconds to be absolutely safe that it has finished downloading and booting.
-  await page.waitForTimeout(120000);
+  // Wait until the React app explicitly renders the .engine-ready-indicator
+  await page.waitForSelector('.engine-ready-indicator', { timeout: 300000 });
+
 
   console.log(`💬 Typing a message...`);
   const input = page.getByPlaceholder('Send a message...');

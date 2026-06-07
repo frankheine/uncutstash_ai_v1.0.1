@@ -1,3 +1,4 @@
+/* src/index.css */
 @import "tailwindcss";
 
 @theme {
@@ -31,8 +32,8 @@
     --card-foreground: 0 0% 98%;
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
+    --primary: 262 83% 58%; /* Violet 600 */
+    --primary-foreground: 0 0% 98%;
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 240 3.7% 15.9%;
@@ -43,8 +44,8 @@
     --destructive-foreground: 0 0% 98%;
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-    --radius: 0.75rem;
+    --ring: 262 83% 58%;
+    --radius: 1rem;
   }
 }
 
@@ -52,7 +53,7 @@
   * {
     @apply border-border;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    scrollbar-color: rgba(139, 92, 246, 0.3) transparent;
   }
 
   ::-webkit-scrollbar {
@@ -63,11 +64,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(139, 92, 246, 0.3);
     border-radius: 10px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(139, 92, 246, 0.6);
   }
 
   body {
@@ -80,68 +81,36 @@
 /* View Transitions API */
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 0.5s;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-duration: 0.8s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Glassmorphism & Mesh Utilities */
 .glass-panel {
-  background: linear-gradient(135deg, rgba(12, 12, 18, 0.6) 0%, rgba(6, 6, 10, 0.4) 100%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-top: 1px solid rgba(255, 255, 255, 0.18);
-  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(135deg, rgba(15, 15, 20, 0.7) 0%, rgba(5, 5, 10, 0.5) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 
-    0 24px 50px rgba(0, 0, 0, 0.5), 
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    inset 0 0 30px rgba(255, 255, 255, 0.02);
+    0 30px 60px rgba(0, 0, 0, 0.6), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 20px rgba(139, 92, 246, 0.05);
 }
 
-.mesh-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background: radial-gradient(circle at 50% 50%, rgba(29, 78, 216, 0.15), transparent 60%),
-    radial-gradient(circle at 80% 20%, rgba(147, 51, 234, 0.15), transparent 50%);
-  mix-blend-mode: screen;
-  pointer-events: none;
-}
-
-/* Preloader */
-#global-preloader {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: #09090b;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: white;
-}
-
-.loader-ring {
-  width: 60px;
-  height: 60px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-  border-top-color: #fff;
-  animation: spin 1s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite;
+/* Animations */
+.animate-spin-slow {
+  animation: spin 4s linear infinite;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
-
-  *,
-  ::before,
-  ::after {
+  *, ::before, ::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -149,40 +118,26 @@
   }
 }
 
-/* Assistant UI Overrides for Shadcn Aesthetic */
+/* Assistant UI Overrides for Premium Aesthetic */
 .aui-thread {
   @apply w-full h-full flex flex-col bg-transparent;
 }
 
 .aui-message-list {
-  @apply flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-}
-
-.aui-message-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.aui-message-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.aui-message-list::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
+  @apply flex-1 overflow-y-auto p-6 space-y-8 scroll-smooth;
 }
 
 .aui-message {
-  @apply max-w-[85%] rounded-2xl p-4 leading-relaxed shadow-sm;
+  @apply max-w-[85%] rounded-3xl p-5 leading-relaxed shadow-lg transition-transform duration-300 hover:scale-[1.01];
+  will-change: transform;
 }
 
 .aui-message[data-role="user"] {
-  @apply bg-primary text-primary-foreground ml-auto rounded-br-sm;
+  @apply bg-violet-600/20 text-violet-50 ml-auto rounded-br-sm border border-violet-500/30 shadow-[0_10px_30px_rgba(139,92,246,0.1)];
 }
 
 .aui-message[data-role="assistant"] {
-  @apply bg-secondary text-secondary-foreground mr-auto rounded-bl-sm border border-white/5;
+  @apply bg-white/5 text-zinc-200 mr-auto rounded-bl-sm border border-white/10 backdrop-blur-md;
 }
 
 .aui-composer {
@@ -190,5 +145,5 @@
 }
 
 .aui-composer-input {
-  @apply w-full bg-black/20 border border-white/10 rounded-full px-6 py-3 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all text-white placeholder:text-white/40;
+  @apply w-full bg-black/40 border border-white/10 rounded-3xl px-6 py-4 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all text-white placeholder:text-white/30 shadow-inner;
 }

@@ -30,7 +30,7 @@ export default defineConfig({
   ],
   // Treat .wasm files as static URL assets so that new URL('...wasm', import.meta.url)
   // resolves to a correct hashed URL rather than Vite trying to bundle the binary.
-  assetsInclude: ['**/*.wasm', '**/*.onnx'],
+  assetsInclude: ['**/*.wasm', '**/*.onnx', '**/*.gguf', '**/*.bin'],
   server: {
     headers: crossOriginHeaders,
   },
