@@ -23,7 +23,8 @@ export default defineConfig({
       filename: 'sw.ts', // Location of your custom worker logic
       registerType: 'autoUpdate',
       injectManifest: {
-        maximumFileSizeToCacheInBytes: 5000000 // Pre-cache basic UI assets
+        // 🔥 BUMPED TO 50MB to support large WASM chunks and heavy Web Workers
+        maximumFileSizeToCacheInBytes: 260000000
       }
     })
   ],
