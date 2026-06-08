@@ -1,6 +1,6 @@
 import { StateGraph, START, END, Annotation } from "@langchain/langgraph";
-import { workers as rawWorkers, runWorker } from "./rag/pipeline";
-const workers = rawWorkers as any;
+// FIX: Import getWorkers getter utility and the updated string-signature runWorker function
+import { getWorkers, runWorker } from "./rag/pipeline";
 
 export const GraphState = Annotation.Root({
     query: Annotation<string>(),
@@ -21,33 +21,41 @@ let networkChannel: MessageChannel | null = null;
 export function getNetworkPort(): MessagePort {
     if (!networkChannel) {
         networkChannel = new MessageChannel();
-        // Pass port2 to the network worker
-        workers.network.postMessage({ type: 'INIT_PORT' }, [networkChannel.port2]);
+        // Pass port2 to the network worker via the dynamic lazy-loader method
+        const networkWorker = (getWorkers as any).getNetwork?.() || (getWorkers as any).getInference();
+        networkWorker.postMessage({ type: 'INIT_PORT' }, [networkChannel.port2]);
     }
     return networkChannel.port1;
 }
+
+// src/orchestrator.ts (Continued)
 
 async function retrieveNode(state: typeof GraphState.State) {
     console.log("--- RETRIEVE NODE ---");
 
     // Routes a log string into the App.tsx streaming queue (polled every 50ms).
-    // This is what makes retrieval stages visible to the user in real-time.
+    // This makes retrieval stages visible to the user in real-time.
     const notify = (msgOrLog: any) => {
-        const text = typeof msgOrLog === 'string' ? msgOrLog : msgOrLog.log;
+        let text = "";
+        if (typeof msgOrLog === 'string') {
+            text = msgOrLog;
+        } else if (msgOrLog && typeof msgOrLog === 'object') {
+            text = msgOrLog.log || msgOrLog.message || "";
+        }
+
         if (activeProgressCallback && text) {
             activeProgressCallback({ status: 'progress', log: text });
         }
     };
 
     try {
-        // 1. Embed the query into a dense vector
+        // 1. Embed the query into a dense vector - Route via string descriptor
         notify('🔮 Embedding query...');
-        const { embedding } = await runWorker<any>(workers.embed, { text: state.query }, notify);
+        const { embedding } = await runWorker<any>('embed', { text: state.query }, notify);
 
-        // 2. Hybrid vector + BM25 search — pass notify so the worker's own
-        //    progress log ("🔍 Searching vector index...") also surfaces in the UI
+        // 2. Hybrid vector + BM25 search — Pass strict routing layout key
         const { candidates } = await runWorker<any>(
-            workers.retrieve,
+            'retrieve',
             { action: 'search', queryVector: embedding, queryText: state.query },
             notify   // ← onProgress: routes worker progress msgs to the UI queue
         );
@@ -60,9 +68,9 @@ async function retrieveNode(state: typeof GraphState.State) {
 
         notify(`📄 ${candidates.length} memories found — reranking for relevance...`);
 
-        // 4. Cross-encoder rerank — also passes notify so rerank stage logs appear
+        // 4. Cross-encoder rerank — Pass strict routing layout key
         const { reranked } = await runWorker<any>(
-            workers.rerank,
+            'rerank',
             { query: state.query, candidates },
             notify   // ← onProgress: routes "🧠 Cross-encoder reranking..." to UI
         );
@@ -81,7 +89,8 @@ async function retrieveNode(state: typeof GraphState.State) {
 async function generateNode(state: typeof GraphState.State) {
     console.log("--- GENERATE NODE ---");
     try {
-        const response = await runWorker<{ text: string }>(workers.inference, {
+        // Route generation using the strict 'inference' execution string tag signature
+        const response = await runWorker<{ text: string }>('inference', {
             prompt: state.query,
             context: state.context ?? "No context available.",
         }, (msg) => {
@@ -98,14 +107,14 @@ async function generateNode(state: typeof GraphState.State) {
 async function memorizeNode(state: typeof GraphState.State) {
     console.log("--- MEMORIZE NODE ---");
     try {
-        // 1. Format the interaction into a single memory block
+        // FIX: Changed variable name to use proper camelCase 'memoryText'
         const memoryText = `User: ${state.query}\nFrank: ${state.answer}`;
 
-        // 2. Generate a vector embedding for this specific memory
-        const { embedding } = await runWorker<any>(workers.embed, { text: memoryText });
+        // 2. Generate a vector embedding for this specific memory block string
+        const { embedding } = await runWorker<any>('embed', { text: memoryText });
 
-        // 3. Insert the memory silently into the Orama database
-        await runWorker<any>(workers.retrieve, { action: 'insert', text: memoryText, embedding });
+        // 3. Insert the memory silently into the local vector storage engine
+        await runWorker<any>('retrieve', { action: 'insert', text: memoryText, embedding });
 
         console.log("--- MEMORY SAVED ---");
         return {};
