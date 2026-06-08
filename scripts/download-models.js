@@ -7,17 +7,15 @@ const __dirname = path.dirname(__filename);
 
 const MODELS = [
     {
-        repo: "Sandoche/Llama-3.2-1B-Instruct-abliterated-q4f16_1-MLC",
-        dir: "SNOWflake_v1.2_UNCUTstash-1B",
-        wasmUrl: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v0_2_84/base/Llama-3.2-1B-Instruct-q4f16_1_cs1k-webgpu.wasm",
-        wasmFile: "SNOWflake_v1.2_UNCUTstash-1B-webgpu.wasm"
+        modelDir: "http://localhost:5173/models/SNOWflake_v1.2_UNCUTstash-1B",
+        wasmUrl: "http://localhost:5173/wasm/FISHscale_v1.0.wasm"
+        wasmFile: "FISHscale_v1.0.wasm"
     }
     /*
     {
-        repo: "Sandoche/Llama-3.2-3B-Instruct-abliterated-q4f16_1-MLC",
-        dir: "SNOWflake_v1.2_UNCUTstash-3B",
-        wasmUrl: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v0_2_84/base/Llama-3.2-3B-Instruct-q4f16_1_cs1k-webgpu.wasm",
-        wasmFile: "SNOWflake_v1.2_UNCUTstash-3B-webgpu.wasm"
+        modelDir: "http://localhost:5173/models/SNOWflake_v1.2_UNCUTstash-3B/",
+        wasmUrl: "http://localhost:5173/wasm/SNOWflake_v1.0.wasm"
+        wasmFile: "SNOWflake_v1.0.wasm"
     }
     */
 ];
@@ -53,7 +51,7 @@ async function main() {
             'tokenizer.json',
             'tokenizer_config.json'
         ];
-        
+
         for (const file of requiredConfigs) {
             const filePath = path.join(modelDir, file);
             if (fs.existsSync(filePath)) {
