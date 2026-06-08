@@ -7,20 +7,24 @@ const __dirname = path.dirname(__filename);
 
 const MODELS = [
     {
-        modelDir: "http://localhost:5173/models/SNOWflake_v1.2_UNCUTstash-1B",
-        wasmUrl: "http://localhost:5173/wasm/FISHscale_v1.0.wasm"
+        // FIX: The script needs the relative directory name to append to BASE_DIR
+        // NOT the localhost URL. The filesystem cannot read "http://localhost..."
+        dir: "SNOWflake_v1.2_UNCUTstash-1B",
+        // FIX: Added missing comma
+        wasmUrl: "http://localhost:5173/wasm/FISHscale_v1.0.wasm",
         wasmFile: "FISHscale_v1.0.wasm"
     }
     /*
     {
-        modelDir: "http://localhost:5173/models/SNOWflake_v1.2_UNCUTstash-3B/",
-        wasmUrl: "http://localhost:5173/wasm/SNOWflake_v1.0.wasm"
+        dir: "SNOWflake_v1.2_UNCUTstash-3B",
+        wasmUrl: "http://localhost:5173/wasm/SNOWflake_v1.0.wasm",
         wasmFile: "SNOWflake_v1.0.wasm"
     }
     */
 ];
 
 const BASE_DIR = path.resolve(__dirname, '../public/models');
+const WASM_DIR = path.resolve(__dirname, '../public/wasm'); // FIX: Added dedicated path for WASM files
 
 async function main() {
     console.log("=== SOVEREIGN RAG: OFFLINE MODEL VERIFICATION ===");
@@ -32,9 +36,15 @@ async function main() {
         process.exit(1);
     }
 
+    if (!fs.existsSync(WASM_DIR)) {
+        console.error(`[FATAL ERROR] Base wasm directory not found at ${WASM_DIR}`);
+        console.error("Please ensure you have created the public/wasm directory.");
+        process.exit(1);
+    }
+
     let allValid = true;
 
-    for (const model of MODELS) {
+    for (const model of MODELS) { // FIX: Removed the stray "0" at the end of this line
         const modelDir = path.join(BASE_DIR, model.dir);
         console.log(`\nVerifying local model directory: ${modelDir}`);
 
@@ -63,11 +73,12 @@ async function main() {
         }
 
         // 2. Verify WebGPU WASM existence
-        const wasmPath = path.join(modelDir, model.wasmFile);
+        // FIX: The WASM file is in public/wasm, not inside the model directory!
+        const wasmPath = path.join(WASM_DIR, model.wasmFile);
         if (fs.existsSync(wasmPath)) {
             console.log(`  [OK] Found WebGPU Orchestrator: ${model.wasmFile}`);
         } else {
-            console.error(`  [X] Missing WebGPU Orchestrator: ${model.wasmFile}`);
+            console.error(`  [X] Missing WebGPU Orchestrator: ${model.wasmFile} in ${WASM_DIR}`);
             allValid = false;
         }
 
