@@ -224,15 +224,19 @@ export const NAV_MODEL_CONFIG = {
     targetModel: 'SNOWflake_v1.2_UNCUTstash-3B'
 };
 
-let _workers: {
+// src/rag/pipeline.ts
+
+export interface PipelineWorkers {
     embed: Worker;
     retrieve: Worker;
     rerank: Worker;
     inference: Worker;
     network: Worker;
-} | null = null;
+}
 
-export function getWorkers() {
+let _workers: PipelineWorkers | null = null;
+
+export function getWorkers(): PipelineWorkers {
     if (!_workers) {
         _workers = {
             embed: new Worker(new URL('../workers/embedding.worker.ts', import.meta.url), { type: 'module' }),
@@ -245,12 +249,11 @@ export function getWorkers() {
     return _workers;
 }
 
-// Backwards-compatible named export so orchestrator.ts doesn't need changes
-export const workers = new Proxy({} as NonNullable<typeof _workers>, {
+export const workers = new Proxy({} as PipelineWorkers, {
     get(_target, prop) {
-        return getWorkers()[prop as keyof NonNullable<typeof _workers>];
+        return getWorkers()[prop as keyof PipelineWorkers];
     }
-}) as NonNullable<typeof _workers>;
+}) as PipelineWorkers;
 
 export function runWorker<T>(worker: Worker, payload: Record<string, unknown>, onProgress?: (msg: any) => void): Promise<T> {
     return new Promise((resolve, reject) => {
