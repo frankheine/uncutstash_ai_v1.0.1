@@ -22,7 +22,7 @@ export default defineConfig({
       filename: 'sw.ts',
       registerType: 'autoUpdate',
       injectManifest: {
-        maximumFileSizeToCacheInBytes: 260000000
+        maximumFileSizeToCacheInBytes: 260000000 // Safely handles mid-sized model binaries
       }
     })
   ],
@@ -43,6 +43,10 @@ export default defineConfig({
   },
   worker: {
     format: 'es',
+    // FIX: Inject path alias mapping inside the independent web worker compilation cycle
+    plugins: () => [
+      tsconfigPaths()
+    ]
   },
   optimizeDeps: {
     exclude: ['@mlc-ai/web-llm', '@wllama/wllama', '@huggingface/transformers'],
