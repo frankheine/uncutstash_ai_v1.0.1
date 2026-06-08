@@ -1,24 +1,15 @@
-// import path from "path";
+// vite.config.ts
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
-// COOP + COEP headers are required for SharedArrayBuffer (multi-threaded WASM)
-// They must be present in BOTH dev and preview/production environments.
 const crossOriginHeaders = {
   "Cross-Origin-Opener-Policy": "same-origin",
   "Cross-Origin-Embedder-Policy": "require-corp",
 };
-import { defineConfig } from 'vite'
 
-export default defineConfig({
-  server: {
-    host: true, // Exposes Vite on your local network IP
-    port: 5173  
-  }
-})
 export default defineConfig({
   plugins: [
     react(),
@@ -27,33 +18,32 @@ export default defineConfig({
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src',
-      filename: 'sw.ts', // Location of your custom worker logic
+      filename: 'sw.ts', 
       registerType: 'autoUpdate',
       injectManifest: {
-        // 🔥 BUMPED TO 50MB to support large WASM chunks and heavy Web Workers
         maximumFileSizeToCacheInBytes: 260000000
       }
     })
   ],
-  // Treat .wasm files as static URL assets so that new URL('...wasm', import.meta.url)
-  // resolves to a correct hashed URL rather than Vite trying to bundle the binary.
-  assetsInclude: ['**/*.wasm', '**/*.onnx', '**/*.gguf', '**/*.bin'],
   server: {
     headers: crossOriginHeaders,
+    watch: {
+      ignored: [
+        '**/public/models/**', 
+        '**/public/wasm/**', 
+        '**/*.gguf',
+        '**/*.bin',
+        '**/*.wasm'
+      ]
+    }
   },
-  // Mirror headers into the preview server so `npm run preview` also
-  // has SharedArrayBuffer available (required for wllama multi-threading).
   preview: {
     headers: crossOriginHeaders,
   },
   worker: {
-    // ES module workers are required for import.meta.url to resolve correctly
-    // inside the wllama WASM loader running inside the inference worker context.
     format: 'es',
   },
   optimizeDeps: {
-    // Exclude both engines to prevent Vite from disrupting
-    // precompiled WebGPU shaders and WASM TVM bindings.
     exclude: ['@mlc-ai/web-llm', '@wllama/wllama', '@huggingface/transformers'],
   },
 });

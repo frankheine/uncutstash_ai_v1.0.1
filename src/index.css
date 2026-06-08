@@ -1,5 +1,6 @@
 /* src/index.css */
 @import "tailwindcss";
+@source "./src";
 
 @theme {
   --color-background: hsl(var(--background));
