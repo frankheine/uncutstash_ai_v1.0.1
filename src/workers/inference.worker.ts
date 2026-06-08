@@ -3,14 +3,22 @@
 // ELITE AUTONOMOUS INFERENCE WORKER
 // Merges Vite debugging interceptors with a strict Autonomous Master architecture.
 // ============================================================================
-
+// src/workers/inference.worker.ts
+import { WebWorkerMLCEngineHandler } from "@mlc-ai/web-llm";
 import { CreateMLCEngine } from "@mlc-ai/web-llm";
 import { Wllama } from "@wllama/wllama";
 
-// Standard web worker polyfill for Emscripten-based modules
+// Standard polyfill to prevent Emscripten-based driver tracking issues
 if (typeof (globalThis as any).document === 'undefined') {
     (globalThis as any).document = { currentScript: null };
 }
+
+const handler = new WebWorkerMLCEngineHandler();
+
+self.onmessage = (msg: MessageEvent) => {
+    // Directly pipes incoming main-thread RPC requests into the GPU engine
+    handler.onmessage(msg);
+};
 
 const CONFIG_PATHS = { default: '/wasm/wllama.wasm' };
 let initPromise: Promise<void> | null = null;
@@ -194,19 +202,19 @@ function startInitialization() {
 
                     // [RESTORED]: Exact Local pathing
                     const customAppConfig = {
-                        cacheBackend: "indexeddb", // HOT Storage
+                        useIndexedDBCache: false, // CRITICAL: Bypasses the corrupted IndexedDB ghost paths
                         model_list: [
                             {
                                 model_id: "SNOWflake_v1.2_UNCUTstash-1B",
-                                model_lib: self.location.origin + "/models/SNOWflake_v1.2_UNCUTstash-1B/SNOWflake_v1.2_UNCUTstash-1B-webgpu.wasm",
-                                vram_required_MB: 1200,
+                                model_lib: self.location.origin + "/wasm/FISHscale_v1.0.wasm",
+                                vram_required_MB: 1200, // Required by WebLLM interface
                                 low_resource_required: true,
                                 model: self.location.origin + "/models/SNOWflake_v1.2_UNCUTstash-1B/"
                             },
                             {
                                 model_id: "SNOWflake_v1.2_UNCUTstash-3B",
-                                model_lib: self.location.origin + "/models/SNOWflake_v1.2_UNCUTstash-3B/SNOWflake_v1.2_UNCUTstash-3B-webgpu.wasm",
-                                vram_required_MB: 2800,
+                                model_lib: self.location.origin + "/SNOWflake_v1.0.wasm",
+                                vram_required_MB: 2800, // Required by WebLLM interface
                                 low_resource_required: false,
                                 model: self.location.origin + "/models/SNOWflake_v1.2_UNCUTstash-3B/"
                             }
