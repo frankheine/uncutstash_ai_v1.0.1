@@ -15,6 +15,23 @@ export const MLC_APP_CONFIG: AppConfig = {
             model_lib: "http://localhost:5173/wasm/SNOWflake_v1.0.wasm"
         }
     ]
+}; export const MLC_APP_CONFIG: AppConfig = {
+    model_list: [
+        {
+            // FIX: Change 'model_url' to 'model'
+            model: "http://localhost:5173/models/SNOWflake_v1.2_UNCUTstash-1B/",
+            // FIX: Change 'local_id' to 'model_id'
+            model_id: "SNOWflake_v1.2_UNCUTstash-1B",
+            model_lib: "http://localhost:5173/wasm/FISHscale_v1.0.wasm"
+        },
+        {
+            // FIX: Change 'model_url' to 'model'
+            model: "http://localhost:5173/models/SNOWflake_v1.2_UNCUTstash-3B/",
+            // FIX: Change 'local_id' to 'model_id'
+            model_id: "SNOWflake_v1.2_UNCUTstash-3B",
+            model_lib: "http://localhost:5173/wasm/SNOWflake_v1.0.wasm"
+        }
+    ]
 };
 
 // Instantiated worker endpoints requested by orchestrator.ts
