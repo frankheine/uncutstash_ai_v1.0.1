@@ -1,64 +1,122 @@
 // src/rag/pipeline.ts
+import { CreateWebWorkerEngine, AppConfig } from "@mlc-ai/web-llm";
 
-export interface PipelineWorkers {
-    embed: Worker;
-    retrieve: Worker;
-    rerank: Worker;
-    inference: Worker;
-    network: Worker;
+// Custom programmatic mapping rules for your self-hosted asset volumes
+export const MLC_APP_CONFIG: AppConfig = {
+    model_list: [
+        {
+            model_url: "http://localhost:5173/models/SNOWflake_v1.2_UNCUTstash-1B/",
+            local_id: "SNOWflake_v1.2_UNCUTstash-1B",
+            model_lib: "http://localhost:5173/wasm/FISHscale_v1.0.wasm"
+        },
+        {
+            model_url: "http://localhost:5173/models/SNOWflake_v1.2_UNCUTstash-3B/",
+            local_id: "SNOWflake_v1.2_UNCUTstash-3B",
+            model_lib: "http://localhost:5173/wasm/SNOWflake_v1.0.wasm"
+        }
+    ]
+};
+
+// Instantiated worker endpoints requested by orchestrator.ts
+export const workers = {
+    embed: new Worker(new URL('../workers/embed.worker.ts', import.meta.url), { type: 'module' }),
+    retrieve: new Worker(new URL('../workers/retrieve.worker.ts', import.meta.url), { type: 'module' }),
+    rerank: new Worker(new URL('../workers/rerank.worker.ts', import.meta.url), { type: 'module' }),
+    inference: new Worker(new URL('../workers/inference.worker.ts', import.meta.url), { type: 'module' }),
+};
+
+let currentEngine: any = null;
+let activeModelId: string | null = null;
+
+/**
+ * Initializes or swaps the background WebGPU engine for the inference worker channel.
+ * Implements clean lifecycle disposal to avoid VRAM leaks across dropdown context mutations.
+ */
+export async function loadActiveModel(modelId: string, progressCallback: (text: string) => void) {
+    // If the worker has already loaded a different model profile, sweep it to prevent OOM errors
+    if (currentEngine && activeModelId !== modelId) {
+        console.log(`[Pipeline] Purging VRAM footprint: Unloading ${activeModelId} to mount ${modelId}`);
+        await currentEngine.unload();
+        currentEngine = null;
+    }
+
+    if (!currentEngine) {
+        // WebLLM CreateWebWorkerEngine proxies calls safely onto inference.worker.ts
+        currentEngine = await CreateWebWorkerEngine(workers.inference, modelId, {
+            appConfig: MLC_APP_CONFIG,
+            initProgressCallback: (progress) => {
+                progressCallback(progress.text);
+            }
+        });
+        activeModelId = modelId;
+    }
+
+    return currentEngine;
 }
 
-let _workers: PipelineWorkers | null = null;
-
-export function getWorkers(): PipelineWorkers {
-    if (!_workers) {
-        _workers = {
-            embed: new Worker(new URL('../workers/embedding.worker.ts', import.meta.url), { type: 'module' }),
-            retrieve: new Worker(new URL('../workers/retrieval.worker.ts', import.meta.url), { type: 'module' }),
-            rerank: new Worker(new URL('../workers/rerank.worker.ts', import.meta.url), { type: 'module' }),
-            inference: new Worker(new URL('../workers/inference.worker.ts', import.meta.url), { type: 'module' }),
-            network: new Worker(new URL('../workers/network.worker.ts', import.meta.url), { type: 'module' }),
-        };
-    }
-    return _workers;
-}
-
-export const workers = new Proxy({} as PipelineWorkers, {
-    get(_target, prop) {
-        return getWorkers()[prop as keyof PipelineWorkers];
-    }
-}) as PipelineWorkers;
-
-export function runWorker<T>(worker: Worker, payload: Record<string, unknown>, onProgress?: (msg: any) => void): Promise<T> {
+/**
+ * Generalized LangGraph pipeline execution envelope.
+ * Wraps worker message boundaries into standard promise states.
+ */
+export function runWorker<T>(
+    worker: Worker,
+    payload: any,
+    onProgress?: (msg: any) => void
+): Promise<T> {
     return new Promise((resolve, reject) => {
-        const id = crypto.randomUUID();
-        let timeout = setTimeout(() => {
-            worker.removeEventListener('message', handler);
-            reject(new Error(`Worker timeout after 300s — likely a model load failure`));
-        }, 300_000);
+        const taskId = crypto.randomUUID();
 
-        const handler = (e: MessageEvent) => {
-            if (e.data.id !== id) return;
+        // Intercept native chat streaming states from the background execution channel
+        if (worker === workers.inference && currentEngine) {
+            const runGeneration = async () => {
+                try {
+                    const SYSTEM_INSTRUCTIONS = "You are 'Frank', the private sovereign intelligence engine under the branding 'UNCUTstash AI'. Use the provided context to answer questions accurately and concisely.";
 
-            if (e.data.status === 'error') {
-                clearTimeout(timeout);
-                worker.removeEventListener('message', handler);
-                reject(new Error(e.data.message || 'Unknown worker error'));
-            } else if (e.data.status === 'success') {
-                clearTimeout(timeout);
-                worker.removeEventListener('message', handler);
-                resolve(e.data as T);
-            } else if (e.data.status === 'progress') {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => {
-                    worker.removeEventListener('message', handler);
-                    reject(new Error(`Worker timeout after 300s — likely a model load failure`));
-                }, 300_000);
-                if (onProgress) onProgress(e.data);
+                    const promptContent = `${SYSTEM_INSTRUCTIONS}\n\nContext:\n${payload.context}\n\nUser: ${payload.prompt}`;
+
+                    const response = await currentEngine.chat.completions.create({
+                        messages: [{ role: "user", content: promptContent }],
+                        temperature: 0.2,
+                        stream: true
+                    });
+
+                    let fullResponseText = "";
+                    for await (const chunk of response) {
+                        const delta = chunk.choices[0]?.delta?.content || "";
+                        fullResponseText += delta;
+
+                        // Stream the text tokens back to the application context dynamically
+                        if (onProgress && delta) {
+                            onProgress({ status: 'progress', delta });
+                        }
+                    }
+
+                    resolve({ text: fullResponseText } as any);
+                } catch (err) {
+                    reject(err);
+                }
+            };
+
+            runGeneration();
+            return;
+        }
+
+        // Standard static data transformation passage paths for embed/retrieve nodes
+        const handleResponse = (e: MessageEvent) => {
+            if (e.data.taskId === taskId) {
+                if (e.data.status === 'success') {
+                    worker.removeEventListener('message', handleResponse);
+                    resolve(e.data.result);
+                } else if (e.data.status === 'log' && onProgress) {
+                    onProgress(e.data.message);
+                } else if (e.data.status === 'error') {
+                    worker.removeEventListener('message', handleResponse);
+                    reject(new Error(e.data.message));
+                }
             }
         };
 
-        worker.addEventListener('message', handler);
-        worker.postMessage({ ...payload, id });
+        worker.addEventListener('message', handleResponse);
+        worker.postMessage({ taskId, ...payload });
     });
 }
