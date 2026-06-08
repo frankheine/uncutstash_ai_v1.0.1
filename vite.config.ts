@@ -11,7 +11,14 @@ const crossOriginHeaders = {
   "Cross-Origin-Opener-Policy": "same-origin",
   "Cross-Origin-Embedder-Policy": "require-corp",
 };
+import { defineConfig } from 'vite'
 
+export default defineConfig({
+  server: {
+    host: true, // Exposes Vite on your local network IP
+    port: 5173  
+  }
+})
 export default defineConfig({
   plugins: [
     react(),
