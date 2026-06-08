@@ -1,39 +1,28 @@
 // src/rag/pipeline.ts
 import { CreateWebWorkerMLCEngine, AppConfig } from "@mlc-ai/web-llm";
 
-// Custom programmatic mapping rules for your self-hosted asset volumes
 export const MLC_APP_CONFIG: AppConfig = {
     model_list: [
         {
-            model_url: "http://localhost:5173/models/SNOWflake_v1.2_UNCUTstash-1B/",
-            local_id: "SNOWflake_v1.2_UNCUTstash-1B",
-            model_lib: "http://localhost:5173/wasm/FISHscale_v1.0.wasm"
-        },
-        {
-            model_url: "http://localhost:5173/models/SNOWflake_v1.2_UNCUTstash-3B/",
-            local_id: "SNOWflake_v1.2_UNCUTstash-3B",
-            model_lib: "http://localhost:5173/wasm/SNOWflake_v1.0.wasm"
-        }
-    ]
-}; export const MLC_APP_CONFIG: AppConfig = {
-    model_list: [
-        {
-            // FIX: Change 'model_url' to 'model'
+            // CHANGE: 'model_url' -> 'model'
             model: "http://localhost:5173/models/SNOWflake_v1.2_UNCUTstash-1B/",
-            // FIX: Change 'local_id' to 'model_id'
+
+            // CHANGE: 'local_id' -> 'model_id'
             model_id: "SNOWflake_v1.2_UNCUTstash-1B",
+
             model_lib: "http://localhost:5173/wasm/FISHscale_v1.0.wasm"
         },
         {
-            // FIX: Change 'model_url' to 'model'
+            // CHANGE: 'model_url' -> 'model'
             model: "http://localhost:5173/models/SNOWflake_v1.2_UNCUTstash-3B/",
-            // FIX: Change 'local_id' to 'model_id'
+
+            // CHANGE: 'local_id' -> 'model_id'
             model_id: "SNOWflake_v1.2_UNCUTstash-3B",
+
             model_lib: "http://localhost:5173/wasm/SNOWflake_v1.0.wasm"
         }
     ]
 };
-
 // Instantiated worker endpoints requested by orchestrator.ts
 export const workers = {
     embed: new Worker(new URL('../workers/embed.worker.ts', import.meta.url), { type: 'module' }),
