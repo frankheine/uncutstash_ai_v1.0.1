@@ -8,6 +8,7 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 const crossOriginHeaders = {
   "Cross-Origin-Opener-Policy": "same-origin",
   "Cross-Origin-Embedder-Policy": "require-corp",
+  "Cross-Origin-Resource-Policy": "same-origin",
 };
 
 export default defineConfig({
@@ -18,22 +19,22 @@ export default defineConfig({
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src',
-      filename: 'sw.ts', 
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       injectManifest: {
         maximumFileSizeToCacheInBytes: 260000000
       }
     })
   ],
+  assetsInclude: ['**/*.wasm', '**/*.onnx', '**/*.gguf', '**/*.bin'],
   server: {
     headers: crossOriginHeaders,
     watch: {
+      // CRITICAL FIX: Prevent Chokidar from indexing massive AI binaries
       ignored: [
-        '**/public/models/**', 
-        '**/public/wasm/**', 
-        '**/*.gguf',
-        '**/*.bin',
-        '**/*.wasm'
+        '**/public/models/**',
+        '**/public/wasm/**',
+        '**/.playwright_cache/**'
       ]
     }
   },

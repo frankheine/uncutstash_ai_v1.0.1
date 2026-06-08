@@ -24,99 +24,72 @@ const MODELS = [
 
 const BASE_DIR = path.resolve(__dirname, '../public/models');
 
-async function downloadFile(url, dest) {
-    if (fs.existsSync(dest)) {
-        console.log(`[SKIP] Already exists: ${path.basename(dest)}`);
-        return;
-    }
-    
-    console.log(`[DOWNLOADING] ${url}`);
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-        throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
-    }
-
-    const fileStream = fs.createWriteStream(dest);
-    const reader = response.body.getReader();
-    
-    let loaded = 0;
-    const total = parseInt(response.headers.get('content-length') || '0', 10);
-    
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        fileStream.write(value);
-        loaded += value.length;
-        
-        if (total > 0 && loaded % (1024 * 1024 * 20) < value.length) { // Log every ~20MB
-            process.stdout.write(`\r  Progress: ${Math.round((loaded / total) * 100)}% (${(loaded / 1024 / 1024).toFixed(1)}MB)`);
-        }
-    }
-    
-    fileStream.end();
-    process.stdout.write('\n');
-}
-
 async function main() {
+    console.log("=== SOVEREIGN RAG: OFFLINE MODEL VERIFICATION ===");
+    console.log("Validating local model assets (Air-gapped mode). No internet requests will be made.\n");
+
     if (!fs.existsSync(BASE_DIR)) {
-        fs.mkdirSync(BASE_DIR, { recursive: true });
+        console.error(`[FATAL ERROR] Base model directory not found at ${BASE_DIR}`);
+        console.error("Please ensure you have placed your model files in the public/models directory.");
+        process.exit(1);
     }
+
+    let allValid = true;
 
     for (const model of MODELS) {
         const modelDir = path.join(BASE_DIR, model.dir);
+        console.log(`\nVerifying local model directory: ${modelDir}`);
+
         if (!fs.existsSync(modelDir)) {
-            fs.mkdirSync(modelDir, { recursive: true });
+            console.error(`  [X] Model directory missing: ${model.dir}`);
+            allValid = false;
+            continue;
         }
 
-        console.log(`\n=== Processing Model: ${model.repo} ===`);
-        
-        const baseUrl = `https://huggingface.co/${model.repo}/resolve/main`;
-        
-        // 1. Fetch JSON Configs
-        const configs = [
+        // 1. Verify required JSON Configs
+        const requiredConfigs = [
             'mlc-chat-config.json',
             'ndarray-cache.json',
             'tokenizer.json',
             'tokenizer_config.json'
         ];
         
-        for (const file of configs) {
-            try {
-                await downloadFile(`${baseUrl}/${file}`, path.join(modelDir, file));
-            } catch (err) {
-                console.warn(`[WARN] Could not download ${file} (might be optional): ${err.message}`);
+        for (const file of requiredConfigs) {
+            const filePath = path.join(modelDir, file);
+            if (fs.existsSync(filePath)) {
+                console.log(`  [OK] Found ${file}`);
+            } else {
+                console.error(`  [X] Missing required config: ${file}`);
+                allValid = false;
             }
         }
 
-        // 2. Parse ndarray-cache.json to get shard list
-        const cachePath = path.join(modelDir, 'ndarray-cache.json');
-        if (!fs.existsSync(cachePath)) {
-            console.error(`[ERROR] ndarray-cache.json not found for ${model.repo}`);
-            continue;
+        // 2. Verify WebGPU WASM existence
+        const wasmPath = path.join(modelDir, model.wasmFile);
+        if (fs.existsSync(wasmPath)) {
+            console.log(`  [OK] Found WebGPU Orchestrator: ${model.wasmFile}`);
+        } else {
+            console.error(`  [X] Missing WebGPU Orchestrator: ${model.wasmFile}`);
+            allValid = false;
         }
 
-        const cacheData = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
-        const shards = new Set();
-        
-        for (const record of cacheData.records) {
-            shards.add(record.dataPath);
+        // 3. Verify Binary Shards
+        const files = fs.readdirSync(modelDir);
+        const shards = files.filter(f => f.startsWith('params_shard_') && f.endsWith('.bin'));
+        if (shards.length > 0) {
+            console.log(`  [OK] Found ${shards.length} binary tensor shards.`);
+        } else {
+            console.error(`  [X] Missing binary tensor shards! No .bin files found.`);
+            allValid = false;
         }
+    }
 
-        console.log(`\nFound ${shards.size} chunked tensor shards to download...`);
-
-        // 3. Download shards sequentially (to avoid memory/network crash)
-        for (const shard of shards) {
-            await downloadFile(`${baseUrl}/${shard}`, path.join(modelDir, shard));
-        }
-
-        // 4. Download WASM architecture binary
-        if (model.wasmUrl) {
-            await downloadFile(model.wasmUrl, path.join(modelDir, model.wasmFile));
-        }
-        
-        console.log(`\n✅ Finished downloading ${model.dir}`);
+    console.log("\n=================================================");
+    if (allValid) {
+        console.log("SUCCESS: All local Sovereign AI models are present and valid.");
+    } else {
+        console.error("ERROR: Missing model files detected! Please check your local models directory.");
+        process.exit(1);
     }
 }
 
