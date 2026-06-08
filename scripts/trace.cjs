@@ -2,7 +2,7 @@ const fs = require('fs');
 const potrace = require('potrace');
 const path = require('path');
 
-const imagePath = path.join(__dirname, '../public/UNCUTstash_Logo_512.png');
+const imagePath = path.join(__dirname, '../public/logos/UNCUTstash_Logo_512.png');
 
 potrace.trace(imagePath, { color: '#ffffff', optTolerance: 0.2 }, function(err, svg) {
   if (err) {
