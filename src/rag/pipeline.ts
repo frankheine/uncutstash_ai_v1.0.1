@@ -1,5 +1,5 @@
 // src/rag/pipeline.ts
-import { CreateWebWorkerEngine, AppConfig } from "@mlc-ai/web-llm";
+import { CreateWebWorkerMLCEngine, AppConfig } from "@mlc-ai/web-llm";
 
 // Custom programmatic mapping rules for your self-hosted asset volumes
 export const MLC_APP_CONFIG: AppConfig = {
@@ -42,7 +42,7 @@ export async function loadActiveModel(modelId: string, progressCallback: (text: 
 
     if (!currentEngine) {
         // WebLLM CreateWebWorkerEngine proxies calls safely onto inference.worker.ts
-        currentEngine = await CreateWebWorkerEngine(workers.inference, modelId, {
+        currentEngine = await CreateWebWorkerMLCEngine(workers.inference, modelId, {
             appConfig: MLC_APP_CONFIG,
             initProgressCallback: (progress) => {
                 progressCallback(progress.text);
