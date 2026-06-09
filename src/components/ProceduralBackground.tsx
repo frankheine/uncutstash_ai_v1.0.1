@@ -191,12 +191,13 @@ export default function ProceduralBackground() {
     document.addEventListener('mousemove', onMouseMove);
 
     // ── Animation ───────────────────────────────────────────────────────────
-    const clock = new THREE.Clock();
+    const timer = new THREE.Timer();
     let animId: number;
 
-    const animate = () => {
+    const animate = (timestamp: number) => {
       animId = requestAnimationFrame(animate);
-      const t = clock.getElapsedTime();
+      timer.update(timestamp);
+      const t = timer.getElapsed();
 
       // Update each layer's time uniform (for twinkle) and make drift rotation visible
       layers.forEach(({ points, mat, speed }) => {
