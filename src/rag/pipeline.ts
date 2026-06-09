@@ -16,7 +16,9 @@ export const MLC_APP_CONFIG: AppConfig = {
     ]
 };
 
-// Lazy initialization references to keep the file parsing clean
+// Explicit Worker type keys for strict compilation tracking
+export type WorkerType = 'embed' | 'retrieve' | 'rerank' | 'inference';
+
 let embedWorker: Worker | null = null;
 let retrieveWorker: Worker | null = null;
 let rerankWorker: Worker | null = null;
@@ -25,7 +27,6 @@ let inferenceWorker: Worker | null = null;
 let currentEngine: any = null;
 let activeModelId: string | null = null;
 
-// Dynamic, production-isolated lookup functions that avoid AST parsing compiler hangs
 export const getWorkers = {
     getEmbed: () => {
         if (!embedWorker) embedWorker = new Worker(new URL('../workers/embed.worker.ts', import.meta.url), { type: 'module' });
@@ -53,9 +54,7 @@ export async function loadActiveModel(modelId: string, progressCallback: (text: 
     }
 
     if (!currentEngine) {
-        // Call the dynamic lookup accessor rather than a static dictionary property
         const targetWorker = getWorkers.getInference();
-
         currentEngine = await CreateWebWorkerMLCEngine(targetWorker, modelId, {
             appConfig: MLC_APP_CONFIG,
             initProgressCallback: (progress) => {
@@ -64,19 +63,17 @@ export async function loadActiveModel(modelId: string, progressCallback: (text: 
         });
         activeModelId = modelId;
     }
-
     return currentEngine;
 }
 
 export function runWorker<T>(
-    targetWorkerType: 'embed' | 'retrieve' | 'rerank' | 'inference',
+    targetWorkerType: WorkerType, // Enforce our strict union literal type here
     payload: any,
     onProgress?: (msg: any) => void
 ): Promise<T> {
     return new Promise((resolve, reject) => {
         const taskId = crypto.randomUUID();
 
-        // Dynamically retrieve the worker context matching the routing tag
         let worker: Worker;
         if (targetWorkerType === 'embed') worker = getWorkers.getEmbed();
         else if (targetWorkerType === 'retrieve') worker = getWorkers.getRetrieve();
