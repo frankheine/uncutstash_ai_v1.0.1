@@ -118,7 +118,7 @@ function buildLayer(cfg: LayerConfig) {
   return { points: new THREE.Points(geo, mat), mat, speed: cfg.speed };
 }
 
-export default function ProceduralBackground() {
+export default function ProceduralBackground({ slowMode = false }: { slowMode?: boolean }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [motionEnabled, setMotionEnabled] = useState(true);
   const motionRef = useRef(motionEnabled);
@@ -126,6 +126,11 @@ export default function ProceduralBackground() {
   useEffect(() => {
     motionRef.current = motionEnabled;
   }, [motionEnabled]);
+
+  const slowModeRef = useRef(slowMode);
+  useEffect(() => {
+    slowModeRef.current = slowMode;
+  }, [slowMode]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -203,8 +208,9 @@ export default function ProceduralBackground() {
       layers.forEach(({ points, mat, speed }) => {
         mat.uniforms.uTime.value = t;
         if (motionRef.current) {
-          points.rotation.y += speed * 2.0; // Extremely slow soothing rotation
-          points.rotation.x += speed * 1.5;
+          const currentSpeed = slowModeRef.current ? speed * 0.05 : speed * 0.5;
+          points.rotation.y += currentSpeed * 2.0;
+          points.rotation.x += currentSpeed * 1.5;
         }
       });
 

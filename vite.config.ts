@@ -28,6 +28,10 @@ export default defineConfig({
   ],
   assetsInclude: ['**/*.wasm', '**/*.onnx', '**/*.gguf', '**/*.bin'],
   server: {
+    allowedHosts: [
+      '.ngrok-free.dev',
+      '.uncutstash.loca.lt'
+    ], // FIX: Trust ngrok tunnel traffic
     headers: crossOriginHeaders,
     watch: {
       // CRITICAL FIX: Prevent Chokidar from indexing massive AI binaries

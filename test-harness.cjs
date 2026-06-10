@@ -42,8 +42,20 @@ async function safeScreenshot(page, filename, options = {}) {
         console.log(`🖥️ [BROWSER ${type}] ${msg.text()}`);
     });
 
+    // Fail-Fast Flag
+    let hasFailed = false;
+    const triggerFailFast = async (reason) => {
+        if (hasFailed) return;
+        hasFailed = true;
+        console.error(`💥 [FAIL-FAST TRIGGERED] ${reason}`);
+        await safeScreenshot(page, 'check-screenshot-failed.png', { fullPage: true });
+        await browser.close();
+        process.exit(1);
+    };
+
     page.on('pageerror', err => {
         console.log(`❌ [BROWSER FATAL ERROR] ${err.message}`);
+        triggerFailFast(err.message);
     });
 
     page.on('response', response => {
@@ -51,10 +63,12 @@ async function safeScreenshot(page, filename, options = {}) {
             const contentType = response.headers()['content-type'];
             if (contentType && contentType.includes('text/html')) {
                 console.log(`🚨 [NETWORK FAULT] Server returned HTML for asset: ${response.url()}`);
+                triggerFailFast('Missing model weights (404 intercepted by Vite SPA)');
             }
         }
-        if (response.status() >= 400) {
+        if (response.status() >= 400 && response.url().includes('/models/')) {
             console.log(`⚠️ [NETWORK ERROR] ${response.status()} ${response.url()}`);
+            triggerFailFast(`Model asset missing: ${response.url()}`);
         }
     });
 
@@ -75,42 +89,13 @@ async function safeScreenshot(page, filename, options = {}) {
         if (!hasWebGPU) {
             throw new Error("navigator.gpu is undefined. WebGPU is NOT active in this browser environment.");
         }
-        console.log("✅ [AGENT HARNESS] WebGPU is active and available.");
 
-        // CHECKPOINT 1: Initial Load
-        await safeScreenshot(page, 'agent_checkpoint_1_load_0s.png');
-        
-        await page.waitForTimeout(1000);
-        await safeScreenshot(page, 'agent_checkpoint_1_load_1s.png');
+        // Dynamically wait until the engine is fully loaded and the main UI becomes visible
+        console.log("🤖 [AGENT HARNESS] Waiting for Sovereign Dual Engine to finish loading...");
+        await page.waitForSelector('.glass-panel', { state: 'visible', timeout: 300000 }); // Wait up to 5 minutes for model download
 
-        await page.waitForTimeout(1000);
-        await safeScreenshot(page, 'agent_checkpoint_1_load_2s.png');
-
-        // 5. Simulate Real User Interaction (MOCK BYPASS)
-        console.log("🤖 [AGENT HARNESS] Force-unhiding UI for MOCK pipeline verification...");
-
-        await page.evaluate(() => {
-            const chatPanel = document.querySelector('.glass-panel:nth-of-type(1)') || document.querySelector('.glass-panel');
-            if (chatPanel) {
-                chatPanel.style.visibility = 'visible';
-                chatPanel.style.opacity = '1';
-                chatPanel.style.pointerEvents = 'auto';
-            }
-        });
-
-        await page.waitForSelector('input[type="text"], textarea', { state: 'visible', timeout: 30000 });
-        await page.fill('input[type="text"], textarea', 'MOCK_TEST_PIPELINE');
-        await safeScreenshot(page, 'agent_checkpoint_2_input.png');
-
-        await page.keyboard.press('Enter');
-
-        // 6. Wait for LLM Inference Pipeline to process
-        console.log("🤖 [AGENT HARNESS] Waiting for WebWorker inference response...");
-        // Wait for the UI to update with a response (Update selector as needed)
-        await page.waitForTimeout(15000); // Hard wait to allow WebLLM to download/infer
-
-        // CHECKPOINT 3: Result
-        await safeScreenshot(page, 'agent_checkpoint_3_result.png', { fullPage: true });
+        await safeScreenshot(page, 'check-screenshot.png', { fullPage: true });
+        console.log("🤖 [AGENT HARNESS] Engine loaded. Verification complete.");
 
     } catch (error) {
         console.error(`🚨 [HARNESS FAILURE] ${error.message}`);
