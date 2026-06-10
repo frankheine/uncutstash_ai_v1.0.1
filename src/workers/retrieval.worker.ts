@@ -1,36 +1,62 @@
-import { create, insert, search } from '@orama/orama';
-// Persistence plugin removed – using in-memory DB only
+import { create, insert, search, save, load } from '@orama/orama';
 
 let db: any = null;
+
+async function saveToOPFS(database: any) {
+    try {
+        const root = await navigator.storage.getDirectory();
+        const fileHandle = await root.getFileHandle('sovereign-vector-db.json', { create: true });
+        const writable = await fileHandle.createWritable();
+        const dbData = await save(database);
+        await writable.write(JSON.stringify(dbData));
+        await writable.close();
+    } catch (e) {
+        console.warn("[Orama Worker] Failed to persist to OPFS", e);
+    }
+}
+
+async function loadFromOPFS() {
+    try {
+        const root = await navigator.storage.getDirectory();
+        const fileHandle = await root.getFileHandle('sovereign-vector-db.json');
+        const file = await fileHandle.getFile();
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        
+        const newDb = await create({
+            schema: { text: 'string', embedding: 'vector[384]' }
+        });
+        await load(newDb, parsed);
+        return newDb;
+    } catch (e) {
+        return null;
+    }
+}
 
 self.onmessage = async (event: MessageEvent) => {
     const { action, id } = event.data;
 
     try {
         if (!db) {
-            try {
-                // Fallback: initialize new DB (no persistence)
-                db = await create({
-                    schema: { text: 'string', embedding: 'vector[384]' }
-                });
-                console.log("[Orama Worker] Initialized new in-memory DB (persistence disabled)");
-            } catch (e) {
-                console.log("[Orama Worker] Initializing new vector database");
+            db = await loadFromOPFS();
+            if (db) {
+                console.log("[Orama Worker] Successfully restored vector database from OPFS");
+            } else {
+                console.log("[Orama Worker] OPFS restore failed or DB not found, creating new");
                 db = await create({
                     schema: {
                         text: 'string',
                         embedding: 'vector[384]',
                     }
                 });
+                console.log("[Orama Worker] Initialized new OPFS-backed vector database");
             }
         }
 
         if (action === 'insert') {
             const { text, embedding } = event.data;
             await insert(db, { text, embedding });
-            
-            // Persistence disabled in this build – skipping persist
-            
+            await saveToOPFS(db);
             self.postMessage({ id, status: 'success' });
         }
 

@@ -1,25 +1,6 @@
 // src/rag/pipeline.ts
 import { CreateWebWorkerMLCEngine, AppConfig } from "@mlc-ai/web-llm";
 
-export const getMLCAppConfig = (useZeroCopy: boolean, hasF16: boolean): AppConfig => {
-    const wasmVersion = hasF16 ? "FISHscale_v1.0.wasm" : "FISHscale_v1.0_f32.wasm"; // Fallback placeholder
-    
-    return {
-        useIndexedDBCache: !useZeroCopy, // Zero-copy stream directly to VRAM if true
-        model_list: [
-            {
-                model: "http://localhost:5173/models/SNOWflake_v1.2_UNCUTstash-1B/",
-                model_id: "SNOWflake_v1.2_UNCUTstash-1B",
-                model_lib: `http://localhost:5173/wasm/${wasmVersion}`
-            },
-            {
-                model: "http://localhost:5173/models/SNOWflake_v1.2_UNCUTstash-3B/",
-                model_id: "SNOWflake_v1.2_UNCUTstash-3B",
-                model_lib: "http://localhost:5173/wasm/SNOWflake_v1.0.wasm"
-            }
-        ]
-    };
-};
 
 // Explicit Worker type keys for strict compilation tracking
 export type WorkerType = 'embed' | 'retrieve' | 'rerank' | 'inference';
@@ -51,37 +32,47 @@ export const getWorkers = {
     }
 };
 
-export async function loadActiveModel(modelId: string, progressCallback: (text: string) => void, useZeroCopy = true) {
-    if (currentEngine && activeModelId !== modelId) {
-        console.log(`[Pipeline] Purging VRAM footprint: Unloading ${activeModelId} to mount ${modelId}`);
-        await currentEngine.unload();
-        currentEngine = null;
+export async function bootstrapSpeculativePipeline(
+  targetModel: string,
+  draftModel: string | null,
+  progressCallback: (text: string) => void
+) {
+  if (!inferenceWorker) {
+    inferenceWorker = new Worker(
+      new URL('../workers/inference.worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+  }
+  
+  if (currentEngine) {
+      console.log(`[Pipeline] Unloading current engine to mount new target: ${targetModel}`);
+      await currentEngine.unload();
+      currentEngine = null;
+  }
+
+  if (!currentEngine) {
+    const configOpts: any = {
+      initProgressCallback: (progress: any) => {
+        progressCallback(progress.text);
+      }
+    };
+
+    if (draftModel) {
+      configOpts.speculativeEngineConfig = {
+        draft_model: draftModel
+      };
     }
 
-    if (!currentEngine) {
-        let hasF16 = false;
-        try {
-            if (navigator.gpu) {
-                const adapter = await navigator.gpu.requestAdapter();
-                if (adapter) hasF16 = adapter.features.has('shader-f16');
-            }
-        } catch (e) {
-            console.warn("GPU Adapter check failed", e);
-        }
-
-        console.log(`[Pipeline] Initializing Engine (ZeroCopy: ${useZeroCopy}, F16: ${hasF16})`);
-
-        const targetWorker = getWorkers.getInference();
-        currentEngine = await CreateWebWorkerMLCEngine(targetWorker, modelId, {
-            appConfig: getMLCAppConfig(useZeroCopy, hasF16),
-            initProgressCallback: (progress) => {
-                progressCallback(progress.text);
-            }
-        });
-        activeModelId = modelId;
-    }
-    return currentEngine;
+    currentEngine = await CreateWebWorkerMLCEngine(
+      inferenceWorker, 
+      targetModel, 
+      configOpts
+    );
+  }
+  return currentEngine;
 }
+
+
 
 export function runWorker<T>(
     targetWorkerType: WorkerType, // Enforce our strict union literal type here

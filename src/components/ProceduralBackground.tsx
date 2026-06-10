@@ -223,7 +223,7 @@ export default function ProceduralBackground({ slowMode = false }: { slowMode?: 
 
       renderer.render(scene, camera);
     };
-    animate();
+    requestAnimationFrame(animate);
 
     // ── Resize ──────────────────────────────────────────────────────────────
     const ro = new ResizeObserver(() => {

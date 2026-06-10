@@ -49,7 +49,7 @@ async function prefetchNextChunk(nextChunkNum: number) {
         const view = new Uint8Array(buffer);
         accessHandle.read(view);
         accessHandle.close();
-        
+
         prefetchPool.set(nextFilename, buffer);
         console.log(`[OPFS] Prefetched next shard to RAM: ${nextFilename}`);
     } catch {
@@ -92,7 +92,7 @@ globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
             accessHandle.close();
 
             console.log(`[OPFS] Synchronous Disk Read: ${filename}`);
-            
+
             // Trigger Async Prefetch for NEXT chunk
             prefetchNextChunk(chunkNum + 1);
             return new Response(buffer);
@@ -100,11 +100,11 @@ globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
             // 3. Not in OPFS yet. Fallback to Network (First Boot Penalty)
             console.log(`[OPFS] Cache Miss. Fetching from Network: ${filename}`);
             const response = await originalFetch(input, init);
-            
+
             // Clone response to cache into OPFS asynchronously
             const cloned = response.clone();
             cloned.arrayBuffer().then(buffer => saveToOPFS(filename, buffer));
-            
+
             prefetchNextChunk(chunkNum + 1);
             return response;
         }
