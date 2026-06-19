@@ -31,7 +31,6 @@ export default function App() {
     const [targetModel, setTargetModel] = useState("Dolphin-3-Abliterated-1B");
     const [draftModel, setDraftModel] = useState<string | null>(null);
     const [borderStyle, setBorderStyle] = useState(2); // Option 2 Default
-    const [cubeVariant, setCubeVariant] = useState(1); // Cube variation state
     const chatPanelRef = useRef<HTMLDivElement>(null);
     const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
     const [execMode, setExecMode] = useState<'local'|'edge'>('edge');
@@ -308,19 +307,7 @@ Private Intelligence Engine...`);
                     {!engineReady && (
                         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-10 pointer-events-none backdrop-blur-md bg-black/40 transition-opacity duration-1000">
                             <div className="flex flex-col items-center gap-6">
-                                <CubeLoader variant={cubeVariant} />
-                                <div className="flex gap-2 pointer-events-auto">
-                                    {[1, 2, 3, 4].map(idx => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => setCubeVariant(idx)}
-                                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-mono transition-colors backdrop-blur-md border ${cubeVariant === idx ? 'bg-violet-500/40 border-violet-400 text-white shadow-[0_0_15px_rgba(139,92,246,0.6)]' : 'bg-black/40 border-white/10 text-white/50 hover:bg-white/10 hover:text-white'}`}
-                                            title={`Cube Theme ${idx}`}
-                                        >
-                                            {idx}
-                                        </button>
-                                    ))}
-                                </div>
+                                <CubeLoader />
                             </div>
                             <div className="flex flex-col items-center gap-4">
                                 <div className="flex items-center gap-3 text-white/80 text-xs font-mono tracking-widest uppercase">

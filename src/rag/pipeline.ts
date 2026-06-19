@@ -26,7 +26,7 @@ const customModels: ModelRecord[] = [
         low_resource_required: true,
     },
     {
-        model_url: "https://huggingface.co/mlc-ai/dolphin-2.9-llama3-1b-q4f32_1-MLC",
+        model_url: "https://huggingface.co/mlc-ai/dolphin-2.9-llama3-1b-q4f32_1-MLC/resolve/main/",
         model_id: "Dolphin-3-Abliterated-1B",
         model_lib_url: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/dolphin-2.9-llama3-1b/dolphin-2.9-llama3-1b-q4f32_1-ctx4k_cs1k-webgpu.wasm",
         vram_required_MB: 1500,
