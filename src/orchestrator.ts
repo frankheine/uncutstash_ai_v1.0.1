@@ -1,6 +1,7 @@
 // src/orchestrator.ts
 import { StateGraph, START, END, Annotation } from "@langchain/langgraph";
 import { getWorkers, runWorker, WorkerType } from "./rag/pipeline";
+import localforage from "localforage";
 
 export const GraphState = Annotation.Root({
     query: Annotation<string>(),
@@ -20,7 +21,7 @@ let networkChannel: MessageChannel | null = null;
 export function getNetworkPort(): MessagePort {
     if (!networkChannel) {
         networkChannel = new MessageChannel();
-        const networkWorker = (getWorkers as any).getNetwork?.() || getWorkers.getInference();
+        const networkWorker = (getWorkers as any).getNetwork();
         networkWorker.postMessage({ type: 'INIT_PORT' }, [networkChannel.port2]);
     }
     return networkChannel.port1;
@@ -79,9 +80,13 @@ async function retrieveNode(state: typeof GraphState.State) {
 async function generateNode(state: typeof GraphState.State) {
     console.log("--- GENERATE NODE ---");
     try {
+        const customPrompt = await localforage.getItem<string>('sovereign_system_prompt');
+        const systemPrompt = customPrompt || "You are 'Frank', the private sovereign intelligence engine under the branding 'UNCUTstash AI'.";
+
         const response = await runWorker<{ text: string }>('inference', {
             prompt: state.query,
             context: state.context ?? "No context available.",
+            systemPrompt
         }, (msg) => {
             if (activeProgressCallback) activeProgressCallback(msg);
         });

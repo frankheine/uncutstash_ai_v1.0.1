@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings2, ChevronDown, Check, Zap } from 'lucide-react';
+import { Settings2, ChevronDown, Check, Zap, Download } from 'lucide-react';
+import { getModelList } from '../rag/pipeline';
 
 export interface ModelPair {
     displayName: string;
     targetModel: string;
     draftModel: string | null;
+    vramRequiredMB?: number;
+    quantization?: string;
+    contextSize?: number;
+    description?: string;
 }
 
 export const MODEL_CATALOG: ModelPair[] = [
@@ -31,13 +36,15 @@ export const AVAILABLE_TARGETS = [
 interface ModelSelectorProps {
     onModelChange: (target: string, draft: string | null) => void;
     isBooting: boolean;
+    execMode: 'local' | 'edge';
 }
 
-export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isBooting }) => {
+export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isBooting, execMode }) => {
     const [isDevMode, setIsDevMode] = useState(false);
     
     // Normal Mode State
     const [selectedPairIndex, setSelectedPairIndex] = useState(0);
+    const [edgeTargetModel, setEdgeTargetModel] = useState("");
     
     // Dev Mode State
     const [devTarget, setDevTarget] = useState(AVAILABLE_TARGETS[0]);
@@ -45,16 +52,35 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
     const [useDraft, setUseDraft] = useState(true);
 
     const [isOpen, setIsOpen] = useState(false);
+    const [edgeModels, setEdgeModels] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (execMode === 'edge') {
+            const list = getModelList();
+            setEdgeModels(list);
+            if (!edgeTargetModel && list.length > 0) {
+                setEdgeTargetModel(list[0].model_id);
+            }
+        }
+    }, [execMode]);
 
     // Apply changes when mode or selections change
     useEffect(() => {
-        if (!isDevMode) {
+        if (isDevMode) {
+            onModelChange(devTarget, useDraft ? devDraft : null);
+        } else if (execMode === 'edge') {
+            if (edgeTargetModel) {
+                onModelChange(edgeTargetModel, null);
+            }
+        } else {
             const pair = MODEL_CATALOG[selectedPairIndex];
             onModelChange(pair.targetModel, pair.draftModel);
-        } else {
-            onModelChange(devTarget, useDraft ? devDraft : null);
         }
-    }, [isDevMode, selectedPairIndex, devTarget, devDraft, useDraft]);
+    }, [isDevMode, selectedPairIndex, devTarget, devDraft, useDraft, execMode, edgeTargetModel]);
+
+    const activeLabel = execMode === 'edge' 
+        ? (edgeTargetModel || "Loading Edge Models...")
+        : MODEL_CATALOG[selectedPairIndex].displayName;
 
     return (
         <div className="relative z-50 flex flex-col items-end">
@@ -88,9 +114,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
                                 isBooting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/5 cursor-pointer hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]'
                             }`}
                         >
-                            <span className="flex items-center gap-2">
-                                <Zap className={`w-4 h-4 ${selectedPairIndex === 0 ? 'text-yellow-400' : 'text-blue-400'}`} />
-                                {MODEL_CATALOG[selectedPairIndex].displayName}
+                            <span className="flex items-center gap-2 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
+                                <Zap className={`w-4 h-4 shrink-0 ${execMode === 'edge' ? 'text-blue-400' : 'text-yellow-400'}`} />
+                                {activeLabel}
                             </span>
                             <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
                         </button>
@@ -101,25 +127,62 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
                                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                    className="absolute top-full right-0 mt-2 w-64 p-2 rounded-xl backdrop-blur-xl border border-white/10 bg-black/80 shadow-2xl overflow-hidden origin-top-right"
+                                    className="absolute top-full right-0 mt-2 w-80 max-h-[60vh] overflow-y-auto p-2 rounded-xl backdrop-blur-xl border border-white/10 bg-black/80 shadow-2xl overflow-hidden origin-top-right custom-scrollbar"
                                 >
-                                    {MODEL_CATALOG.map((pair, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => {
-                                                setSelectedPairIndex(idx);
-                                                setIsOpen(false);
-                                            }}
-                                            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                                                selectedPairIndex === idx 
-                                                ? 'bg-white/10 text-white' 
-                                                : 'text-white/60 hover:bg-white/5 hover:text-white/90'
-                                            }`}
-                                        >
-                                            {pair.displayName}
-                                            {selectedPairIndex === idx && <Check className="w-4 h-4" />}
-                                        </button>
-                                    ))}
+                                    {execMode === 'local' ? (
+                                        MODEL_CATALOG.map((pair, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => {
+                                                    setSelectedPairIndex(idx);
+                                                    setIsOpen(false);
+                                                }}
+                                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                                                    selectedPairIndex === idx 
+                                                    ? 'bg-white/10 text-white' 
+                                                    : 'text-white/60 hover:bg-white/5 hover:text-white/90'
+                                                }`}
+                                            >
+                                                {pair.displayName}
+                                                {selectedPairIndex === idx && <Check className="w-4 h-4" />}
+                                            </button>
+                                        ))
+                                    ) : (
+                                        edgeModels.map((model) => (
+                                            <div key={model.model_id} className="relative group w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors hover:bg-white/5 text-white/60 hover:text-white/90">
+                                                <button
+                                                    onClick={() => {
+                                                        setEdgeTargetModel(model.model_id);
+                                                        setIsOpen(false);
+                                                    }}
+                                                    className="flex-1 text-left"
+                                                >
+                                                    <span className={edgeTargetModel === model.model_id ? "text-white font-medium" : ""}>
+                                                        {model.model_id}
+                                                    </span>
+                                                </button>
+                                                <button 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        console.log("Trigger WASM download for", model.model_id);
+                                                    }}
+                                                    className="p-1.5 ml-2 rounded-full hover:bg-white/10 text-white/40 hover:text-blue-400 transition-colors"
+                                                    title="Download WASM Shards"
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                </button>
+
+                                                {/* Hover Popover */}
+                                                <div className="absolute top-0 right-[calc(100%+0.5rem)] w-64 p-4 rounded-xl backdrop-blur-3xl border border-white/10 bg-black/90 shadow-2xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all scale-95 group-hover:scale-100 origin-right">
+                                                    <h4 className="font-mono text-xs text-blue-300 mb-2 truncate">{model.model_id}</h4>
+                                                    <div className="text-[10px] text-white/50 space-y-1">
+                                                        <div className="flex justify-between"><span>VRAM Req:</span> <span>{model.vram_required_MB ? `${model.vram_required_MB} MB` : 'Unknown'}</span></div>
+                                                        <div className="flex justify-between"><span>Context:</span> <span>{model.context_window_size || 'Default'}</span></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
                                 </motion.div>
                             )}
                         </AnimatePresence>

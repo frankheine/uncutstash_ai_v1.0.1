@@ -7,8 +7,9 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 
 const crossOriginHeaders = {
   "Cross-Origin-Opener-Policy": "same-origin",
-  "Cross-Origin-Embedder-Policy": "require-corp",
-  "Cross-Origin-Resource-Policy": "same-origin",
+  // credentialless still enables SharedArrayBuffer but allows cross-origin
+  // fetches to jsdelivr/huggingface CDNs that don't send CORP headers
+  "Cross-Origin-Embedder-Policy": "credentialless",
 };
 
 export default defineConfig({
@@ -28,9 +29,12 @@ export default defineConfig({
   ],
   assetsInclude: ['**/*.wasm', '**/*.onnx', '**/*.gguf', '**/*.bin'],
   server: {
+    port: 5173,
+    strictPort: true,
+    host: '127.0.0.1',
     allowedHosts: [
       '.ngrok-free.dev',
-      '.uncutstash.loca.lt'
+      '.run.pinggy-free.link'
     ], // FIX: Trust ngrok tunnel traffic
     headers: crossOriginHeaders,
     watch: {

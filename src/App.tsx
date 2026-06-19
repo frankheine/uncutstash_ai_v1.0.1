@@ -15,25 +15,45 @@ import { ContextualOverlay } from './components/ContextualOverlay';
 import { SidebarMenu } from './components/SidebarMenu';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { SpatialPanel } from './components/SpatialPanel';
+import DocumentDropzone from './components/DocumentDropzone';
+import CommandPalette from './components/CommandPalette';
+import OfflineIndicator from './components/OfflineIndicator';
+import CubeLoader from './components/CubeLoader';
+import { SettingsModal } from './components/SettingsModal';
 
 const PanelGroup = ResizablePanelGroup as any;
 
 export default function App() {
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [engineReady, setEngineReady] = useState(false);
     const [isBooting, setIsBooting] = useState(false);
     const [useZeroCopy, setUseZeroCopy] = useState(false);
-    const [targetModel, setTargetModel] = useState("Llama-3.2-3B-Instruct-q4f16_1-MLC");
-    const [draftModel, setDraftModel] = useState<string | null>("Llama-3.2-1B-Instruct-q4f16_1-MLC");
+    const [targetModel, setTargetModel] = useState("Dolphin-3-Abliterated-1B");
+    const [draftModel, setDraftModel] = useState<string | null>(null);
     const [borderStyle, setBorderStyle] = useState(2); // Option 2 Default
+    const [cubeVariant, setCubeVariant] = useState(1); // Cube variation state
     const chatPanelRef = useRef<HTMLDivElement>(null);
     const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
+    const [execMode, setExecMode] = useState<'local'|'edge'>('edge');
+    const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+    const [scrollMode, setScrollMode] = useState<'container' | 'page'>('container');
 
     useEffect(() => {
         const handleNavigation = () => {
             setSessionId(crypto.randomUUID());
         };
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                setIsCommandPaletteOpen(true);
+            }
+        };
         window.addEventListener('popstate', handleNavigation);
-        return () => window.removeEventListener('popstate', handleNavigation);
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('popstate', handleNavigation);
+            window.removeEventListener('keydown', handleKeyDown);
+        };
     }, []);
 
     const [downloadLog, setDownloadLog] = useState(`Initializing UNCUTstash AI
@@ -60,20 +80,9 @@ Private Intelligence Engine...`);
         setIsBooting(true);
 
         const bootSequence = async () => {
-            let finalTarget = targetModel;
-            try {
-                if (navigator.gpu) {
-                    const adapter = await navigator.gpu.requestAdapter();
-                    if (adapter && !adapter.features.has('shader-f16')) {
-                        console.log("Device lacks f16 support. Auto-routing to f32 WASM...");
-                        finalTarget = finalTarget.replace('f16', 'f32');
-                    }
-                }
-            } catch (e) {
-                console.warn("GPU check failed, defaulting to f16", e);
-            }
-
-            bootstrapSpeculativePipeline(finalTarget, draftModel, (text) => {
+            // GPU probing and f16/f32 auto-routing is now handled inside
+            // bootstrapSpeculativePipeline itself, including CPU fallback.
+            bootstrapSpeculativePipeline(targetModel, draftModel, (text) => {
                 setDownloadLog(text);
                 const match = text.match(/\[(\d+)\/\d+\]/);
                 if (match) {
@@ -85,10 +94,12 @@ Private Intelligence Engine...`);
             .then(() => {
                 setDownloadPercent(100);
                 setIsBooting(false);
-                if ('startViewTransition' in document) {
-                    (document as any).startViewTransition(() => setEngineReady(true));
-                } else {
-                    setEngineReady(true);
+                if (!engineReady) {
+                    if ('startViewTransition' in document) {
+                        (document as any).startViewTransition(() => setEngineReady(true));
+                    } else {
+                        setEngineReady(true);
+                    }
                 }
             })
             .catch(err => {
@@ -101,7 +112,7 @@ Private Intelligence Engine...`);
         bootSequence();
         
         return () => {
-            bootLockRef.current = false;
+            // Intentionally not resetting bootLockRef to prevent React StrictMode double-booting
         };
     }, [targetModel, draftModel, useZeroCopy]);
 
@@ -115,20 +126,65 @@ Private Intelligence Engine...`);
     }, [engineReady]);
 
     useEffect(() => {
-        const lenis = new Lenis({
-            duration: 1.2,
-            easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-            orientation: 'vertical',
-            smoothWheel: true,
-        });
+        gsap.ticker.lagSmoothing(0);
+        let lenis: Lenis | null = null;
+        let observer: MutationObserver | null = null;
 
-        function raf(time: number) {
-            lenis.raf(time);
-            requestAnimationFrame(raf);
+        function update(time: number) {
+            if (lenis) lenis.raf(time * 1000);
         }
-        requestAnimationFrame(raf);
-        return () => lenis.destroy();
-    }, []);
+
+        function initLenis(container: HTMLElement | Window) {
+            if (lenis) {
+                gsap.ticker.remove(update);
+                lenis.destroy();
+            }
+            lenis = new Lenis({
+                wrapper: container === window ? window : (container as HTMLElement),
+                content: container === window ? document.documentElement : (container.firstElementChild as HTMLElement),
+                duration: 1.2,
+                easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+                orientation: 'vertical',
+                smoothWheel: true,
+            });
+            (window as any).activeLenis = lenis;
+            gsap.ticker.add(update);
+        }
+
+        if (scrollMode === 'page') {
+            document.body.style.overflow = 'auto';
+            document.documentElement.style.overflow = 'auto';
+            initLenis(window);
+        } else {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            // Try to find the viewport immediately
+            const viewport = document.querySelector('[data-radix-scroll-area-viewport]');
+            if (viewport) {
+                initLenis(viewport as HTMLElement);
+            } else {
+                // Fallback to window, but keep watching for the viewport
+                initLenis(window);
+                observer = new MutationObserver(() => {
+                    const newViewport = document.querySelector('[data-radix-scroll-area-viewport]');
+                    if (newViewport) {
+                        initLenis(newViewport as HTMLElement);
+                        observer?.disconnect();
+                    }
+                });
+                observer.observe(document.body, { childList: true, subtree: true });
+            }
+        }
+
+        return () => {
+            if (observer) observer.disconnect();
+            if (lenis) {
+                gsap.ticker.remove(update);
+                lenis.destroy();
+            }
+            (window as any).activeLenis = null;
+        };
+    }, [scrollMode]);
 
     const runtime = useLocalRuntime({
         run: async function* ({ messages, abortSignal }) {
@@ -204,11 +260,36 @@ Private Intelligence Engine...`);
     return (
         <TooltipProvider>
             <AssistantRuntimeProvider runtime={runtime}>
-                <div className="relative flex h-[100dvh] w-full bg-zinc-950 overflow-hidden text-white selection:bg-violet-500/30">
+                <div className={`relative flex w-full bg-zinc-950 text-white selection:bg-violet-500/30 ${scrollMode === 'container' ? 'h-[100dvh] overflow-hidden' : 'min-h-[100dvh]'}`}>
+                    <DocumentDropzone onProgress={(status) => {
+                        setGlobalStatus(status);
+                        if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+                        statusTimerRef.current = setTimeout(() => setGlobalStatus(null), 3000);
+                    }} />
 
-                    <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
+                    <OfflineIndicator />
+                    <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
+
+                    <div className="absolute top-4 right-4 z-50 flex flex-col gap-2 items-end">
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => {
+                                    const newMode = execMode === 'local' ? 'edge' : 'local';
+                                    setExecMode(newMode);
+                                    import('./rag/pipeline').then(m => m.setExecutionMode(newMode));
+                                }}
+                                className={`px-3 py-1.5 rounded-full text-xs font-mono tracking-widest backdrop-blur-md border transition-all ${
+                                    execMode === 'edge' 
+                                    ? 'bg-blue-500/20 border-blue-500/50 text-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.4)]' 
+                                    : 'bg-green-500/20 border-green-500/50 text-green-300 shadow-[0_0_15px_rgba(34,197,94,0.4)]'
+                                }`}
+                            >
+                                {execMode === 'local' ? 'SOVEREIGN LOCAL' : 'EDGE NETWORK'}
+                            </button>
+                        </div>
                         <ModelSelector 
                             isBooting={isBooting}
+                            execMode={execMode}
                             onModelChange={(target, draft) => {
                                 setTargetModel(target);
                                 setDraftModel(draft);
@@ -220,18 +301,26 @@ Private Intelligence Engine...`);
                         />
                     </div>
 
-                    <div className="absolute inset-0 z-0 pointer-events-none">
+                    <div className="fixed inset-0 z-0 pointer-events-none">
                         <ProceduralBackground slowMode={engineReady} />
                     </div>
 
                     {!engineReady && (
                         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-10 pointer-events-none backdrop-blur-md bg-black/40 transition-opacity duration-1000">
-                            <div className="relative w-48 h-48 flex items-center justify-center">
-                                <svg className="absolute inset-0 w-full h-full animate-spin-slow" viewBox="0 0 100 100">
-                                    <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(139, 92, 246, 0.2)" strokeWidth="1"></circle>
-                                    <circle cx="50" cy="50" r="48" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeDasharray="300" strokeDashoffset="250" className="drop-shadow-[0_0_10px_rgba(139,92,246,0.8)]"></circle>
-                                </svg>
-                                <div className="text-4xl font-light tracking-widest text-violet-400">AI</div>
+                            <div className="flex flex-col items-center gap-6">
+                                <CubeLoader variant={cubeVariant} />
+                                <div className="flex gap-2 pointer-events-auto">
+                                    {[1, 2, 3, 4].map(idx => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => setCubeVariant(idx)}
+                                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-mono transition-colors backdrop-blur-md border ${cubeVariant === idx ? 'bg-violet-500/40 border-violet-400 text-white shadow-[0_0_15px_rgba(139,92,246,0.6)]' : 'bg-black/40 border-white/10 text-white/50 hover:bg-white/10 hover:text-white'}`}
+                                            title={`Cube Theme ${idx}`}
+                                        >
+                                            {idx}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                             <div className="flex flex-col items-center gap-4">
                                 <div className="flex items-center gap-3 text-white/80 text-xs font-mono tracking-widest uppercase">
@@ -283,11 +372,19 @@ Private Intelligence Engine...`);
 
                     <div
                         ref={chatPanelRef}
-                        className="relative z-10 w-[92%] md:w-[85%] max-w-6xl mx-auto my-8 md:my-12 h-[calc(100dvh-4rem)] md:h-[calc(100dvh-6rem)] flex flex-col overflow-hidden"
+                        className={`relative z-10 w-[92%] md:w-[85%] max-w-6xl mx-auto my-8 md:my-12 flex flex-col ${scrollMode === 'container' ? 'h-[calc(100dvh-4rem)] md:h-[calc(100dvh-6rem)] overflow-hidden' : 'min-h-[calc(100dvh-4rem)]'}`}
                         style={{ opacity: 0, pointerEvents: engineReady ? 'auto' : 'none' }}
                     >
                         {engineReady && (
-                            <div className="absolute top-4 right-4 z-50 flex gap-2">
+                            <div className="absolute top-4 right-4 z-50 flex gap-2 items-center">
+                                <button
+                                    onClick={() => setScrollMode(prev => prev === 'container' ? 'page' : 'container')}
+                                    className="px-3 py-1.5 rounded-full text-xs font-mono backdrop-blur-md border border-white/10 bg-black/40 text-white/80 hover:bg-white/10 transition-colors shadow-[0_0_10px_rgba(0,0,0,0.5)]"
+                                    title="Toggle Scroll Mode (Container vs Page)"
+                                >
+                                    SCROLL: {scrollMode.toUpperCase()}
+                                </button>
+                                <div className="w-[1px] h-6 bg-white/20 mx-1"></div>
                                 {[1, 2, 3, 4].map(idx => (
                                     <button
                                         key={idx}
@@ -302,13 +399,19 @@ Private Intelligence Engine...`);
                         )}
                         <SpatialPanel depth={20} className={`w-full h-full rounded-2xl md:rounded-3xl overflow-hidden transition-all duration-700 ${getBorderClass(borderStyle)}`}>
                             <PanelGroup direction="horizontal" className="w-full h-full">
-                                <ResizablePanel defaultSize={25} minSize={20} maxSize={40} className="hidden md:block bg-black/20 border-r border-white/5">
-                                    <SidebarMenu onOpenSettings={() => { console.log('Settings') }} />
+                                <ResizablePanel
+                                    defaultSize={28}
+                                    minSize={22}
+                                    maxSize={45}
+                                    style={{ minWidth: '220px' }}
+                                    className="hidden md:flex flex-col bg-black/20 border-r border-white/5"
+                                >
+                                    <SidebarMenu onOpenSettings={() => setIsSettingsOpen(true)} />
                                 </ResizablePanel>
 
-                                <ResizableHandle className="w-[1px] bg-white/10 hover:bg-violet-500/50 transition-colors" />
+                                <ResizableHandle className="w-[1px] bg-white/10 hover:bg-violet-500/50 transition-colors cursor-col-resize" />
 
-                                <ResizablePanel defaultSize={75} className="bg-transparent relative">
+                                <ResizablePanel defaultSize={72} className="bg-transparent relative">
                                     <Suspense fallback={<div className="flex h-full items-center justify-center text-violet-400/50 animate-pulse font-mono text-sm">Mounting Secure Boundary...</div>}>
                                         <div key={sessionId} className="w-full h-full">
                                             <Thread />
@@ -321,8 +424,9 @@ Private Intelligence Engine...`);
 
                     {/* <PerimeterHalo onTrigger={() => setIsOverlayOpen(true)} /> */}
                     <ContextualOverlay isOpen={isOverlayOpen} onClose={() => setIsOverlayOpen(false)} />
+                    <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
-                    {engineReady && <div className="engine-ready-indicator hidden" />}
+                    {engineReady && <div className="engine-ready-indicator absolute opacity-0 w-0 h-0 pointer-events-none" />}
                 </div>
             </AssistantRuntimeProvider>
         </TooltipProvider>

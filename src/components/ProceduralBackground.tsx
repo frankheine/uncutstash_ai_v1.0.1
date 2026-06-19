@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import gsap from 'gsap';
 
 // ── Vertex Shader ─────────────────────────────────────────────────────────────
 // Passes each star's size and colour to the fragment shader.
@@ -196,13 +197,13 @@ export default function ProceduralBackground({ slowMode = false }: { slowMode?: 
     document.addEventListener('mousemove', onMouseMove);
 
     // ── Animation ───────────────────────────────────────────────────────────
-    const timer = new THREE.Timer();
-    let animId: number;
+    const animate = () => {
+      const t = performance.now() * 0.001;
 
-    const animate = (timestamp: number) => {
-      animId = requestAnimationFrame(animate);
-      timer.update(timestamp);
-      const t = timer.getElapsed();
+      let scrollOffset = 0;
+      if ((window as any).activeLenis) {
+        scrollOffset = (window as any).activeLenis.scroll || 0;
+      }
 
       // Update each layer's time uniform (for twinkle) and make drift rotation visible
       layers.forEach(({ points, mat, speed }) => {
@@ -214,16 +215,22 @@ export default function ProceduralBackground({ slowMode = false }: { slowMode?: 
         }
       });
 
-      // Smooth spring interpolation toward mouse — much wider tracking range
       if (motionRef.current) {
         camera.position.x += (targetX * 120 - camera.position.x) * 0.04;
-        camera.position.y += (-targetY * 80 - camera.position.y) * 0.04;
+        
+        // Target Y is a combination of mouse parallax and scroll position
+        const targetCameraY = (-targetY * 80) - (scrollOffset * 0.1);
+        
+        // Instantly snap to the target if we want zero latency, or slightly smooth it
+        camera.position.y += (targetCameraY - camera.position.y) * 0.1;
       }
       camera.lookAt(scene.position);
 
       renderer.render(scene, camera);
+      animId = requestAnimationFrame(animate);
     };
-    requestAnimationFrame(animate);
+    
+    let animId = requestAnimationFrame(animate);
 
     // ── Resize ──────────────────────────────────────────────────────────────
     const ro = new ResizeObserver(() => {
@@ -249,6 +256,11 @@ export default function ProceduralBackground({ slowMode = false }: { slowMode?: 
 
   return (
     <>
+      {/* Base Layer: Premium Animated Mesh + Noise (Serves as fallback if WebGL fails, and backdrop if WebGL succeeds) */}
+      <div className="absolute inset-0 z-0 pointer-events-none procedural-mesh-bg" />
+      <div className="noise-overlay" />
+      
+      {/* WebGL Canvas Layer */}
       <div ref={mountRef} className="absolute inset-0 z-0 pointer-events-none" />
       <button 
         onClick={() => setMotionEnabled(!motionEnabled)}

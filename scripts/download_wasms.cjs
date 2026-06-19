@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const WASM_DIR = path.join(__dirname, '../public/wasm');
 
@@ -23,11 +24,24 @@ async function downloadFile(filename) {
 
     console.log(`Downloading: ${filename}...`);
 
+    const options = {};
+    if (process.env.HF_TOKEN) {
+        options.headers = {
+            'Authorization': `Bearer ${process.env.HF_TOKEN}`
+        };
+    } else {
+        console.warn('⚠️ WARNING: HF_TOKEN not found in .env. Attempting anonymous download, which may fail with 401 Unauthorized.');
+    }
+
     return new Promise((resolve, reject) => {
-        const request = https.get(url, (response) => {
+        const request = https.get(url, options, (response) => {
             if (response.statusCode === 302 || response.statusCode === 301) {
                 // Follow redirect
-                https.get(response.headers.location, (res) => {
+                const redirectOptions = { ...options };
+                https.get(response.headers.location, redirectOptions, (res) => {
+                    if (res.statusCode !== 200) {
+                        return reject(new Error(`Failed to download ${filename} after redirect. Status: ${res.statusCode}`));
+                    }
                     const file = fs.createWriteStream(dest);
                     res.pipe(file);
                     file.on('finish', () => {

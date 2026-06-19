@@ -1,65 +1,132 @@
 // src/workers/cpu.fallback.worker.ts
+// ============================================================================
+// CPU FALLBACK INFERENCE (WASM SIMD via wllama)
+// Used when WebGPU is unavailable. Compatible with runWorker() taskId protocol.
+// ============================================================================
 import { Wllama } from '@wllama/wllama';
 
-// 1. The WASM Polyfill
-// Strictly required for the emscripten-generated WASM glue inside @wllama/wllama 
-// to prevent crashes in the background thread.
+// Strictly required for the emscripten-generated WASM glue inside @wllama/wllama
 if (typeof (globalThis as any).document === 'undefined') {
     (globalThis as any).document = { currentScript: null };
 }
 
 let wllamaInstance: Wllama | null = null;
-const CONFIG_PATHS = { default: '/wasm/wllama.wasm' };
+let isInitializing = false;
+
+// Default WASM paths — wllama needs these to find its own WASM runtime
+const CONFIG_PATHS = {
+    'single-thread/wllama.wasm': 'https://cdn.jsdelivr.net/npm/@wllama/wllama@latest/dist/single-thread/wllama.wasm',
+    'multi-thread/wllama.wasm': 'https://cdn.jsdelivr.net/npm/@wllama/wllama@latest/dist/multi-thread/wllama.wasm',
+};
 
 self.onmessage = async (event: MessageEvent) => {
-    const { action, payload, id, type, prompt, context, systemInstructions, modelPath } = event.data;
+    const { action, payload, id, taskId, type, prompt, context, systemInstructions, modelPath } = event.data;
+
+    // Use whichever ID is available (pipeline sends 'id', runWorker sends 'taskId')
+    const messageId = id || taskId;
 
     try {
+        // ── INITIALIZE ──────────────────────────────────────────────────────
         if (action === 'INITIALIZE' || type === 'INIT_CPU') {
+            if (isInitializing) {
+                self.postMessage({ id: messageId, taskId: messageId, status: 'error', message: 'Already initializing' });
+                return;
+            }
+            isInitializing = true;
+
             console.log("[CPU Fallback Worker] Booting WASM SIMD Engine...");
-            // Automatically detect hardware concurrency for multithreading
             const nThreads = navigator.hardwareConcurrency ? Math.max(1, navigator.hardwareConcurrency - 1) : 4;
 
-            wllamaInstance = new Wllama(CONFIG_PATHS, { suppressNativeLog: true });
-            await wllamaInstance.loadModelFromUrl(payload?.modelUrl || modelPath, {
-                n_ctx: 2048,
-                n_gpu_layers: 0, // Strictly CPU execution
-                n_threads: nThreads,
-            });
+            try {
+                wllamaInstance = new Wllama(CONFIG_PATHS, { suppressNativeLog: true });
 
-            self.postMessage({ id, status: 'ready' });
+                const modelUrl = payload?.modelUrl || modelPath ||
+                    "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf";
+
+                await wllamaInstance.loadModelFromUrl(modelUrl, {
+                    n_ctx: 2048,
+                    n_gpu_layers: 0,
+                    n_threads: nThreads,
+                    progressCallback: (progress: any) => {
+                        const pct = typeof progress === 'object' ? progress.loaded / progress.total : progress;
+                        self.postMessage({
+                            id: messageId,
+                            taskId: messageId,
+                            status: 'progress',
+                            message: `Loading CPU model: ${Math.round((pct || 0) * 100)}%`
+                        });
+                    }
+                });
+
+                isInitializing = false;
+                self.postMessage({ id: messageId, taskId: messageId, status: 'ready' });
+            } catch (initErr: any) {
+                isInitializing = false;
+                throw initErr;
+            }
             return;
         }
 
+        // ── GENERATE ────────────────────────────────────────────────────────
         if (action === 'GENERATE' || type === 'GENERATE_CPU') {
-            if (!wllamaInstance) throw new Error("CPU Engine not initialized.");
+            if (!wllamaInstance) {
+                throw new Error("CPU Engine not initialized. Call INITIALIZE first.");
+            }
 
             const safeContext = context || "No context available.";
             const userPrompt = prompt || payload?.prompt || "";
+            const sysInstructions = systemInstructions || "You are 'Frank', the private sovereign intelligence engine under the branding 'UNCUTstash AI'.";
 
-            // Add (wllamaInstance as any) to tell TypeScript to accept your original 2-argument structure
-            // Create a completely un-typed hook to the method execution
+            self.postMessage({
+                id: messageId,
+                taskId: messageId,
+                status: 'progress',
+                message: '🔧 CPU engine generating response...'
+            });
+
+            // Use the createChatCompletion API
             const makeCompletion = (wllamaInstance as any).createChatCompletion.bind(wllamaInstance);
 
-            await makeCompletion([
-                { role: 'system', content: systemInstructions || "You are an AI." },
+            let fullText = "";
+
+            const response = await makeCompletion([
+                { role: 'system', content: sysInstructions },
                 { role: 'user', content: `Context:\n${safeContext}\n\nQuery:\n${userPrompt}` }
             ], {
                 max_tokens: 512,
                 temperature: 0.2,
-                onNewToken: (token: any, piece: any, currentText: any) => {
-                    self.postMessage({ id, status: "progress", delta: piece });
+                onNewToken: (_token: any, piece: any, _currentText: any) => {
+                    fullText += piece;
+                    self.postMessage({
+                        id: messageId,
+                        taskId: messageId,
+                        status: 'progress',
+                        delta: piece
+                    });
                 }
-            }).then((response: any) => {
-                const responseText = response.choices ? response.choices[0].message.content : (response.text || response);
-                self.postMessage({ id, status: 'success', text: responseText });
-            }).catch((err: any) => {
-                console.error("[CPU Fallback Worker Error]:", err);
-                self.postMessage({ id, status: 'error', message: err.message });
+            });
+
+            // Extract the final text
+            const responseText = response?.choices?.[0]?.message?.content
+                || response?.text
+                || fullText
+                || String(response);
+
+            self.postMessage({
+                id: messageId,
+                taskId: messageId,
+                status: 'success',
+                text: responseText,
+                result: { text: responseText }
             });
         }
     } catch (error: any) {
         console.error("[CPU Fallback Worker Error]:", error);
-        self.postMessage({ id, status: 'error', message: error.message });
+        self.postMessage({
+            id: messageId,
+            taskId: messageId,
+            status: 'error',
+            message: error.message || String(error)
+        });
     }
 };

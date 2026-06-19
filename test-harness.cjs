@@ -17,18 +17,22 @@ async function safeScreenshot(page, filename, options = {}) {
 
     const os = require('os');
     const path = require('path');
-    const userDataDir = path.join(os.tmpdir(), `.playwright_cache_sovereign_${Date.now()}`);
+    const userDataDir = path.resolve('.playwright_cache');
     const browser = await chromium.launchPersistentContext(userDataDir, {
-        headless: true, // Force headless for background verification required for true WebGPU hardware acceleration
+        headless: true,
+        channel: 'msedge', // Force use of full Edge browser for proper WebGPU stack on Windows
         viewport: { width: 1280, height: 800 },
         bypassCSP: true,
         args: [
+            '--enable-gpu', // Explicitly enable GPU
             '--enable-unsafe-webgpu',
-            '--enable-features=UseSkiaRenderer',
+            '--enable-webgpu-developer-features', // Expose shader-f16
+            '--enable-dawn-features=allow_unsafe_apis,disable_robustness',
             '--disable-gpu-sandbox',
             '--ignore-gpu-blocklist',
-            '--use-angle=d3d11', // Force D3D11 to stabilize WebGL on Windows AMD
-            '--disable-web-security', // Bypass CORS for local testing
+            '--disable-software-rasterizer', // Prevent CPU fallback at Chrome level
+            '--use-angle=vulkan', // Switch to Vulkan to bypass D3D11 limits and expose f16
+            '--disable-web-security',
             '--unlimited-storage',
         ],
     });
@@ -80,8 +84,8 @@ async function safeScreenshot(page, filename, options = {}) {
 
     try {
         // 3. Navigate to Vite Localhost (Adjust port if necessary)
-        console.log("🤖 [AGENT HARNESS] Navigating to http://localhost:5173");
-        await page.goto('http://localhost:5173/', { waitUntil: 'domcontentloaded', timeout: 120000 });
+        console.log("🤖 [AGENT HARNESS] Navigating to http://127.0.0.1:5173");
+        await page.goto('http://127.0.0.1:5173/', { waitUntil: 'domcontentloaded', timeout: 120000 });
         console.log("🤖 [AGENT HARNESS] DOM Loaded. Waiting for initialization sequence...");
 
         // 4. Verify WebGPU Context
@@ -90,11 +94,21 @@ async function safeScreenshot(page, filename, options = {}) {
             throw new Error("navigator.gpu is undefined. WebGPU is NOT active in this browser environment.");
         }
 
-        // Dynamically wait until the engine is fully loaded and the main UI becomes visible
-        console.log("🤖 [AGENT HARNESS] Waiting for Sovereign Dual Engine to finish loading...");
-        await page.waitForSelector('.glass-panel', { state: 'visible', timeout: 300000 }); // Wait up to 5 minutes for model download
+        // Wait 2 seconds for boot screen to render and take screenshot
+        console.log("🤖 [AGENT HARNESS] Taking Boot Screen screenshot...");
+        await page.waitForTimeout(2000);
+        await safeScreenshot(page, 'check-screenshot-boot.png', { fullPage: true });
 
-        await safeScreenshot(page, 'check-screenshot.png', { fullPage: true });
+        // Click Bypass to verify the chat window
+        console.log("🤖 [AGENT HARNESS] Clicking FORCE BYPASS button to verify main UI...");
+        await page.click('button:has-text("FORCE BYPASS ENGINE")');
+
+        console.log("🤖 [AGENT HARNESS] Waiting for Sovereign Dual Engine to finish loading...");
+        await page.waitForSelector('.engine-ready-indicator', { state: 'attached', timeout: 10000 }); 
+
+        // Wait 2 seconds for GSAP animations to complete
+        await page.waitForTimeout(2000);
+        await safeScreenshot(page, 'check-screenshot-chat.png', { fullPage: true });
         console.log("🤖 [AGENT HARNESS] Engine loaded. Verification complete.");
 
     } catch (error) {

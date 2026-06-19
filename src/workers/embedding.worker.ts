@@ -1,46 +1,53 @@
 import { pipeline, env } from '@huggingface/transformers';
 
-// Enable remote fetching as a fallback in case local LFS pointer is corrupt
-env.allowRemoteModels = false;
+// Enable remote fetching as a fallback when local model files are missing
+env.allowRemoteModels = true;
 env.allowLocalModels = true;
 env.localModelPath = self.location.origin + '/models/';
 env.useBrowserCache = true;
 
-// 2. Force WASM execution binaries to resolve locally via the served public path
-env.backends.onnx.wasm!.wasmPaths = self.location.origin + '/wasm/'; // 👈 Added ! to ensure it isn't evaluated as undefined
+// 2. Force WASM execution binaries to resolve via public CDN to prevent MIME type issues
+env.backends.onnx.wasm!.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.1/dist/';
+// 3. Disable ONNX multi-threading so it doesn't spawn sub-blob workers that violate Vite's MIME rules
+env.backends.onnx.wasm!.numThreads = 1;
 
 let extractor: any = null;
+let initPromise: Promise<any> | null = null;
 
 // Use standard self.onmessage syntax to match your existing pattern perfectly
 self.onmessage = async (event: MessageEvent) => {
-    const { text, id } = event.data;
+    const { text, taskId } = event.data;
 
     try {
         if (!extractor) {
-            // It looks for: /models/Xenova/all-MiniLM-L6-v2/config.json
-            // Force CPU: embeddings are fast on CPU and WebGPU must be reserved
-            // exclusively for the inference worker (Web-LLM / Qwen2) to prevent
-            // [Invalid ShaderModule] shader collisions across workers.
-            extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
-                device: 'wasm',
-                quantized: true,
-                progress_callback: (data: any) => {
-                    if (data.status === 'progress' && typeof data.progress === 'number') {
-                        self.postMessage({ id, status: 'progress', log: `Loading Embedding Weights: ${Math.round(data.progress)}%` });
-                    } else {
-                        self.postMessage({ id, status: 'progress', log: `Loading Embedding Weights: ${data.status || 'Downloading'}...` });
+            if (!initPromise) {
+                // It looks for: /models/Xenova/all-MiniLM-L6-v2/config.json
+                // Force CPU: embeddings are fast on CPU and WebGPU must be reserved
+                // exclusively for the inference worker (Web-LLM / Qwen2) to prevent
+                // [Invalid ShaderModule] shader collisions across workers.
+                initPromise = pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+                    device: 'wasm',
+                    quantized: true,
+                    progress_callback: (data: any) => {
+                        if (data.status === 'progress' && typeof data.progress === 'number') {
+                            self.postMessage({ taskId, status: 'progress', log: `Loading Embedding Weights: ${Math.round(data.progress)}%` });
+                        } else {
+                            self.postMessage({ taskId, status: 'progress', log: `Loading Embedding Weights: ${data.status || 'Downloading'}...` });
+                        }
                     }
-                }
-            } as any); // 👈 Added 'as any' to bypass strict model option validation
+                } as any); // 👈 Added 'as any' to bypass strict model option validation
+            }
+            extractor = await initPromise;
         }
 
         const output = await extractor(text, { pooling: 'mean', normalize: true });
         const embedding = Array.from(output.data);
 
-        self.postMessage({ id, status: 'success', embedding });
+        self.postMessage({ taskId, status: 'success', embedding });
     } catch (error: any) {
         console.error("[Embedding Worker Error]:", error);
         // Crucial for debugging local file-loading issues
-        self.postMessage({ id, status: 'error', message: `Worker error: ${error.message}` });
+        self.postMessage({ taskId, status: 'error', message: `Worker error: ${error.message}` });
+        initPromise = null;
     }
 };

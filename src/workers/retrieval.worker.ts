@@ -34,7 +34,7 @@ async function loadFromOPFS() {
 }
 
 self.onmessage = async (event: MessageEvent) => {
-    const { action, id } = event.data;
+    const { action, taskId } = event.data;
 
     try {
         if (!db) {
@@ -57,13 +57,25 @@ self.onmessage = async (event: MessageEvent) => {
             const { text, embedding } = event.data;
             await insert(db, { text, embedding });
             await saveToOPFS(db);
-            self.postMessage({ id, status: 'success' });
+            self.postMessage({ taskId, status: 'success' });
+        }
+
+        if (action === 'flush') {
+            console.log("[Orama Worker] Flushing vector database...");
+            db = await create({
+                schema: {
+                    text: 'string',
+                    embedding: 'vector[384]',
+                }
+            });
+            await saveToOPFS(db);
+            self.postMessage({ taskId, status: 'success' });
         }
 
         if (action === 'search') {
             const { queryVector, queryText } = event.data;
 
-            self.postMessage({ id, status: 'progress', log: '🔍 Executing Orama Hybrid Search...' });
+            self.postMessage({ taskId, status: 'progress', log: '🔍 Executing Orama Hybrid Search...' });
 
             try {
                 const results = await search(db, {
@@ -79,13 +91,13 @@ self.onmessage = async (event: MessageEvent) => {
                     score: hit.score
                 }));
 
-                self.postMessage({ id, status: 'success', candidates });
+                self.postMessage({ taskId, status: 'success', candidates });
             } catch (searchError: any) {
                 console.log("[Orama Worker] Search failed (likely empty db):", searchError);
-                self.postMessage({ id, status: 'success', candidates: [] });
+                self.postMessage({ taskId, status: 'success', candidates: [] });
             }
         }
     } catch (error: any) {
-        self.postMessage({ id, status: 'error', message: error.message });
+        self.postMessage({ taskId, status: 'error', message: error.message });
     }
 };

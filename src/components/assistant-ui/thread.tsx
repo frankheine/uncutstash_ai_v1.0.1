@@ -224,6 +224,7 @@ const MessageError: FC = () => {
 };
 
 const AssistantMessage: FC = () => {
+  const isRunning = useAuiState((s) => s.thread.isRunning);
   // reserves space for action bar and compensates with `-mb` for consistent msg spacing
   // keeps hovered action bar from shifting layout (autohide doesn't support absolute positioning well)
   // for pt-[n] use -mb-[n + 6] & min-h-[n + 6] to preserve compensation
@@ -234,6 +235,7 @@ const AssistantMessage: FC = () => {
     <MessagePrimitive.Root
       data-slot="aui_assistant-message-root"
       data-role="assistant"
+      data-engine-streaming={isRunning ? "true" : undefined}
       className="fade-in slide-in-from-bottom-1 animate-in relative duration-150"
     >
       <div

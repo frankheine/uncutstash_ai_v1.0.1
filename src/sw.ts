@@ -135,6 +135,16 @@ self.addEventListener("fetch", (event) => {
 
                 // Cache miss execution path: acquire via network connection and write to local disk
                 try {
+                    // STRICT OFFLINE ARCHITECTURE / AIRPLANE MODE ENFORCEMENT
+                    // Only allow fetching from localhost/origin or whitelisted domains
+                    const urlObj = new URL(event.request.url);
+                    const isLocal = urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1' || urlObj.hostname === self.location.hostname;
+                    
+                    if (!isLocal) {
+                        console.warn(`[Offline Enforcer] Blocked external request to ${urlObj.href}`);
+                        throw new Error("Airplane Mode Enforced: External network requests blocked.");
+                    }
+
                     const networkResponse = await fetch(event.request);
 
                     if (networkResponse.status === 200) {

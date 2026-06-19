@@ -35,8 +35,8 @@ async function saveToOPFS(filename: string, buffer: ArrayBuffer) {
     }
 }
 
-async function prefetchNextChunk(nextChunkNum: number) {
-    const nextFilename = `shard-cat${nextChunkNum.toString().padStart(4, '0')}.bin`;
+async function prefetchNextChunk(nextUrlStr: string) {
+    const nextFilename = getOPFSFilename(nextUrlStr);
     if (prefetchPool.has(nextFilename)) return;
 
     try {
@@ -62,12 +62,18 @@ function extractChunkNumber(url: string): number | null {
     return match ? parseInt(match[1], 10) : null;
 }
 
+function getOPFSFilename(urlStr: string) {
+    const url = new URL(urlStr, self.location.origin);
+    return url.pathname.replace(/[^a-zA-Z0-9.\-]/g, '_') + '_part0';
+}
+
 globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const urlStr = input.toString();
     const chunkNum = extractChunkNumber(urlStr);
 
     if (chunkNum !== null) {
-        const filename = `shard-cat${chunkNum.toString().padStart(4, '0')}.bin`;
+        const filename = getOPFSFilename(urlStr);
+        const nextUrlStr = urlStr.replace(`cat${chunkNum}`, `cat${chunkNum + 1}`);
 
         // 1. Check RAM Prefetch Pool (Ping-Pong Swap)
         if (prefetchPool.has(filename)) {
@@ -75,7 +81,7 @@ globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
             prefetchPool.delete(filename); // Free up RAM pool
 
             // Trigger Async Prefetch for NEXT chunk
-            prefetchNextChunk(chunkNum + 1);
+            prefetchNextChunk(nextUrlStr);
             return new Response(buffer);
         }
 
@@ -94,7 +100,7 @@ globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
             console.log(`[OPFS] Synchronous Disk Read: ${filename}`);
 
             // Trigger Async Prefetch for NEXT chunk
-            prefetchNextChunk(chunkNum + 1);
+            prefetchNextChunk(nextUrlStr);
             return new Response(buffer);
         } catch {
             // 3. Not in OPFS yet. Fallback to Network (First Boot Penalty)
@@ -105,7 +111,7 @@ globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
             const cloned = response.clone();
             cloned.arrayBuffer().then(buffer => saveToOPFS(filename, buffer));
 
-            prefetchNextChunk(chunkNum + 1);
+            prefetchNextChunk(nextUrlStr);
             return response;
         }
     }

@@ -38,6 +38,27 @@ export function SidebarMenu({ onOpenSettings }: SidebarMenuProps) {
             <PlusCircle size={18} className="text-violet-400" />
             <span>New Chat</span>
           </button>
+          <button 
+            onClick={() => {
+                const messages = document.querySelectorAll('.assistant-ui-message');
+                let md = "# Sovereign AI Session Export\n\n";
+                messages.forEach(m => {
+                    const role = m.getAttribute('data-role') || 'Unknown';
+                    const text = m.textContent || '';
+                    md += `**${role}**\n${text}\n\n`;
+                });
+                const blob = new Blob([md], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `sovereign_session_${new Date().getTime()}.md`;
+                a.click();
+            }}
+            className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-blue-500/20 transition-all border border-white/5 hover:border-blue-500/30 text-white shadow-sm font-medium"
+          >
+            <HardDrive size={18} className="text-blue-400" />
+            <span>Export Session (.md)</span>
+          </button>
         </div>
 
         <ScrollArea className="flex-1 pr-2 custom-scrollbar">
