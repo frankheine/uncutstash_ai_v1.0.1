@@ -52,7 +52,7 @@ export const DocumentDropzone: React.FC<DocumentDropzoneProps> = ({ onProgress }
             
             // Extremely basic chunking for phase 1
             const chunkSize = 1000;
-            const chunks = [];
+            const chunks: string[] = [];
             for (let i = 0; i < text.length; i += chunkSize) {
                 chunks.push(text.slice(i, i + chunkSize));
             }

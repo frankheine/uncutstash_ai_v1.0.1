@@ -17,6 +17,7 @@ let isInitializing = false;
 const CONFIG_PATHS = {
     'single-thread/wllama.wasm': 'https://cdn.jsdelivr.net/npm/@wllama/wllama@latest/dist/single-thread/wllama.wasm',
     'multi-thread/wllama.wasm': 'https://cdn.jsdelivr.net/npm/@wllama/wllama@latest/dist/multi-thread/wllama.wasm',
+    'default': 'https://cdn.jsdelivr.net/npm/@wllama/wllama@latest/dist/single-thread/wllama.wasm'
 };
 
 self.onmessage = async (event: MessageEvent) => {

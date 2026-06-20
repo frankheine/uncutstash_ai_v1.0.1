@@ -4,6 +4,10 @@
 // ============================================================================
 import { CreateWebWorkerMLCEngine, prebuiltAppConfig, AppConfig, ModelRecord } from "@mlc-ai/web-llm";
 
+export interface ExtendedModelRecord extends ModelRecord {
+    model_url?: string;
+}
+
 // Explicit Worker type keys for strict compilation tracking
 export type WorkerType = 'embed' | 'retrieve' | 'rerank' | 'inference';
 
@@ -17,7 +21,7 @@ export function setExecutionMode(mode: ExecutionMode) {
     console.log(`[Pipeline] Execution mode set to: ${mode}`);
 }
 
-const customModels: ModelRecord[] = [
+const customModels: ExtendedModelRecord[] = [
     {
         model_url: "/models/SNOWflake_v1.2_UNCUTstash-1B",
         model_id: "SNOWflake_v1.2_UNCUTstash-1B",

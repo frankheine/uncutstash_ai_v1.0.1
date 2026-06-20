@@ -141,7 +141,7 @@ Private Intelligence Engine...`);
             }
             lenis = new Lenis({
                 wrapper: container === window ? window : (container as HTMLElement),
-                content: container === window ? document.documentElement : (container.firstElementChild as HTMLElement),
+                content: container === window ? document.documentElement : (container && 'firstElementChild' in container ? (container as HTMLElement).firstElementChild : null as unknown as HTMLElement),
                 duration: 1.2,
                 easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
                 orientation: 'vertical',

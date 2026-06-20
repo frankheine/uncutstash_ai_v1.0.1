@@ -31,7 +31,7 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    host: '127.0.0.1',
+    host: 'localhost',
     allowedHosts: [
       '.ngrok-free.dev',
       '.run.pinggy-free.link'
