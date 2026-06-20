@@ -13,7 +13,7 @@ const { chromium } = require('playwright');
     });
 
     const context = await browser.newContext();
-    const page    = await context.newPage();
+    const page = await context.newPage();
 
     // ── Capture browser console ───────────────────────────────────────────────
     page.on('console', msg => {
@@ -28,21 +28,7 @@ const { chromium } = require('playwright');
     console.log('[TEST] DOM loaded. Waiting for engine boot (model may download — up to 10 min)...');
 
     // ── Wait for the chat panel to become interactive ─────────────────────────
-    // The panel starts at opacity:0 / pointer-events:none.
-    // App.tsx GSAP-animates it to opacity:1 / pointer-events:auto when engineReady=true.
-    // FIX: null is the arg param, options is the THIRD param in Playwright API.
-    await page.waitForFunction(
-        () => {
-            // Find the glass chat panel (has both these classes)
-            const panel = document.querySelector('.glass-panel');
-            if (!panel) return false;
-            const st = window.getComputedStyle(panel);
-            // GSAP sets opacity to 1 when engine is ready
-            return parseFloat(st.opacity) > 0.9 && st.pointerEvents !== 'none';
-        },
-        null,            // ← arg passed into the browser fn (not used, must be null)
-        { timeout: 600_000 }  // ← 10 minutes for model download
-    );
+    await page.waitForSelector('.engine-ready-indicator', { state: 'attached', timeout: 600000 });
 
     console.log('[TEST] ✅ Engine online — chat panel interactive.');
 
@@ -59,9 +45,9 @@ const { chromium } = require('playwright');
     console.log('[TEST] Message sent. Streaming response...\n');
 
     // ── Poll for stable response ──────────────────────────────────────────────
-    let lastText    = '';
+    let lastText = '';
     let stableCount = 0;
-    const deadline  = Date.now() + 600_000; // 10 min
+    const deadline = Date.now() + 600_000; // 10 min
 
     while (Date.now() < deadline) {
         await page.waitForTimeout(1500);

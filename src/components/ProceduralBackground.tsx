@@ -56,16 +56,49 @@ interface LayerConfig {
   colors:  number[]; // pairs: hex color A, hex color B — lerped per star
 }
 
-const LAYERS: LayerConfig[] = [
-  // Distant dust — tiny, dense, slow
-  { count: 2000, spread: 400, minSize: 1.0,  maxSize: 3.0,  speed: 0.012, colors: [0x0f172a, 0x1e3a8a] },
-  // Mid field — medium, blue/cyan mix
-  { count: 800,  spread: 250, minSize: 3.0,  maxSize: 7.0,  speed: 0.022, colors: [0x2563eb, 0x60a5fa] },
-  // Foreground bright orbs — sparse, large, vivid
-  { count: 200,  spread: 150, minSize: 8.0,  maxSize: 16.0, speed: 0.035, colors: [0x93c5fd, 0xeff6ff] },
-  // Occasional massive blue/white giants
-  { count: 40,   spread: 120, minSize: 18.0, maxSize: 35.0, speed: 0.018, colors: [0xffffff, 0xdbeafe] },
-];
+const getLayersForVariant = (variant: number): LayerConfig[] => {
+  // Variant 2: Real stars in space (the user's favorite)
+  if (variant === 2) {
+    return [
+      { count: 2000, spread: 400, minSize: 1.0,  maxSize: 3.0,  speed: 0.012, colors: [0x0f172a, 0x1e3a8a] },
+      { count: 800,  spread: 250, minSize: 3.0,  maxSize: 7.0,  speed: 0.022, colors: [0x2563eb, 0x60a5fa] },
+      { count: 200,  spread: 150, minSize: 8.0,  maxSize: 16.0, speed: 0.035, colors: [0x93c5fd, 0xeff6ff] },
+      { count: 40,   spread: 120, minSize: 18.0, maxSize: 35.0, speed: 0.018, colors: [0xffffff, 0xdbeafe] },
+    ];
+  }
+  // Variants 1, 3-10: Different color palettes and densities
+  const palettes = [
+    // 1: Emerald/Teal
+    [0x022c22, 0x065f46, 0x10b981, 0x34d399, 0xa7f3d0, 0xffffff],
+    // 3: Amethyst/Purple
+    [0x2e1065, 0x4c1d95, 0x7c3aed, 0xa78bfa, 0xddd6fe, 0xffffff],
+    // 4: Crimson/Red
+    [0x450a0a, 0x7f1d1d, 0xdc2626, 0xf87171, 0xfecaca, 0xffffff],
+    // 5: Amber/Gold
+    [0x451a03, 0x78350f, 0xd97706, 0xfbbf24, 0xfde68a, 0xffffff],
+    // 6: Deep Space Black & White
+    [0x000000, 0x171717, 0x525252, 0xa3a3a3, 0xe5e5e5, 0xffffff],
+    // 7: Rose/Pink
+    [0x4c0519, 0x881337, 0xe11d48, 0xfb7185, 0xfecdd3, 0xffffff],
+    // 8: Cyan/Neon Blue
+    [0x083344, 0x164e63, 0x0891b2, 0x22d3ee, 0xcffafe, 0xffffff],
+    // 9: Matrix Green
+    [0x052e16, 0x14532d, 0x15803d, 0x4ade80, 0xbbf7d0, 0xffffff],
+    // 10: Sunset Orange/Purple
+    [0x2e1065, 0x7c3aed, 0xc026d3, 0xe11d48, 0xf97316, 0xffffff],
+  ];
+  
+  let paletteIdx = variant - 1;
+  if (variant > 2) paletteIdx = variant - 2;
+  const p = palettes[paletteIdx % palettes.length];
+
+  return [
+    { count: 2000, spread: 400, minSize: 1.0,  maxSize: 3.0,  speed: 0.012, colors: [p[0], p[1]] },
+    { count: 800,  spread: 250, minSize: 3.0,  maxSize: 7.0,  speed: 0.022, colors: [p[2], p[3]] },
+    { count: 200,  spread: 150, minSize: 8.0,  maxSize: 16.0, speed: 0.035, colors: [p[4], p[5]] },
+    { count: 40,   spread: 120, minSize: 18.0, maxSize: 35.0, speed: 0.018, colors: [p[5], p[5]] },
+  ];
+};
 
 function buildLayer(cfg: LayerConfig) {
   const { count, spread, minSize, maxSize, colors } = cfg;
@@ -119,7 +152,7 @@ function buildLayer(cfg: LayerConfig) {
   return { points: new THREE.Points(geo, mat), mat, speed: cfg.speed };
 }
 
-export default function ProceduralBackground({ slowMode = false }: { slowMode?: boolean }) {
+export default function ProceduralBackground({ slowMode = false, variant = 2 }: { slowMode?: boolean, variant?: number }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [motionEnabled, setMotionEnabled] = useState(true);
   const motionRef = useRef(motionEnabled);
@@ -161,7 +194,7 @@ export default function ProceduralBackground({ slowMode = false }: { slowMode?: 
     }
 
     // ── Build star field layers ─────────────────────────────────────────────
-    const layers = LAYERS.map(cfg => {
+    const layers = getLayersForVariant(variant).map(cfg => {
       const layer = buildLayer(cfg);
       scene.add(layer.points);
       return layer;
@@ -252,23 +285,20 @@ export default function ProceduralBackground({ slowMode = false }: { slowMode?: 
       });
       renderer.dispose();
     };
-  }, []);
+  }, [variant]);
 
   return (
     <>
-      {/* Base Layer: Premium Animated Mesh + Noise (Serves as fallback if WebGL fails, and backdrop if WebGL succeeds) */}
-      <div className="absolute inset-0 z-0 pointer-events-none procedural-mesh-bg" />
-      <div className="noise-overlay" />
-      
-      {/* WebGL Canvas Layer */}
-      <div ref={mountRef} className="absolute inset-0 z-0 pointer-events-none" />
-      <button 
-        onClick={() => setMotionEnabled(!motionEnabled)}
-        className="fixed bottom-4 right-4 z-50 text-white/40 hover:text-white/90 bg-black/30 hover:bg-black/50 rounded-full px-3 py-1.5 text-xs border border-white/5 transition-all backdrop-blur-md cursor-pointer pointer-events-auto flex items-center gap-2 font-mono"
-      >
-        <div className={`w-2 h-2 rounded-full ${motionEnabled ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500'}`} />
-        MOTION
-      </button>
+      <div ref={mountRef} className="fixed inset-0 z-[-2] pointer-events-none transition-opacity duration-1000" />
+      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
+        <label className="text-white/50 text-xs font-mono uppercase tracking-widest pointer-events-auto">Motion</label>
+        <button 
+          onClick={() => setMotionEnabled(!motionEnabled)}
+          className={`w-12 h-6 rounded-full p-1 transition-colors pointer-events-auto ${motionEnabled ? 'bg-emerald-500' : 'bg-white/20'}`}
+        >
+          <div className={`w-4 h-4 bg-white rounded-full transition-transform ${motionEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+        </button>
+      </div>
     </>
   );
 }

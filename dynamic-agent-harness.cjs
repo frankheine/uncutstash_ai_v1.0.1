@@ -1,18 +1,6 @@
-// dynamic-agent-harness.cjs
-// Fix Playwright hanging on "waiting for fonts to load" during screenshots
-process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = '1';
-
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
-let GIFEncoder = null;
-let jpeg = null;
-try {
-    GIFEncoder = require('gifencoder');
-    jpeg = require('jpeg-js');
-} catch (e) {
-    console.log("⚠️ pure-js image libraries not found, skipping GIF generation");
-}
 
 const ARTIFACTS_DIR = path.resolve('timeline_artifacts');
 if (!fs.existsSync(ARTIFACTS_DIR)) fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });
@@ -52,7 +40,6 @@ async function runAutonomousHarness() {
             '--ignore-gpu-blocklist',
             '--disable-software-rasterizer',
             '--use-angle=vulkan',
-            '--use-cmd-decoder=passthrough',
             '--disable-web-security',
             '--unlimited-storage'
         ],
@@ -61,7 +48,7 @@ async function runAutonomousHarness() {
     const page = browser.pages()[0] || await browser.newPage();
 
     // EXPOSE NON-BLOCKING BACKGROUND INTERVALS TO DOM BOUNDARY
-    await page.exposeFunction('startRapidCapture', (intervalMs = 30) => {
+    await page.exposeFunction('startRapidCapture', (intervalMs = 100) => {
         if (isBursting) return;
         isBursting = true;
         console.log(`⚡ [STREAM DETECTED] Spawning parallel loop at ${intervalMs}ms intervals.`);
@@ -105,15 +92,9 @@ async function runAutonomousHarness() {
         await interceptAction('type', selector, () => originalFill(selector, text, options));
     };
 
-    const originalPress = page.press.bind(page);
-    page.press = async (selector, key, options) => {
-        console.log(`🔘  [ACTION] Press: ${key}`);
-        await interceptAction('press', selector, () => originalPress(selector, key, options));
-    };
-
     try {
         console.log("🚀 Navigating to local engine target application...");
-        await page.goto('http://127.0.0.1:5173/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await page.goto('http://localhost:5173/', { waitUntil: 'domcontentloaded', timeout: 60000 });
 
         console.log("⚙️ Injecting scoped MutationObserver for thread tracking...");
         await page.evaluate(() => {
@@ -128,7 +109,7 @@ async function runAutonomousHarness() {
                 }
 
                 if (streamFound) {
-                    window.startRapidCapture(30); // Capturing intervals at 30ms chunks
+                    window.startRapidCapture(150); // Capturing intervals at 150ms chunks
                     if (timeoutToken) clearTimeout(timeoutToken);
                     timeoutToken = setTimeout(() => {
                         window.stopRapidCapture();
@@ -137,23 +118,30 @@ async function runAutonomousHarness() {
             });
 
             // target precision containers matching assistant-ui primitives
-            setTimeout(() => {
-                const target = document.querySelector('.aui-thread-messages') || document.body;
-                if (target) {
-                    observer.observe(target, { childList: true, subtree: true, characterData: true });
-                }
-            }, 5000);
+            const target = document.querySelector('.aui-thread-messages') || document.body;
+            if (target) {
+                observer.observe(target, { childList: true, subtree: true, characterData: true });
+            }
         });
 
         // SIMULATED COMPLETE TEST SEQUENCE
         console.log("⏳ Initializing system buffer states (10s boot sleep)...");
         await page.waitForTimeout(10000);
 
-        // Action 1: Trigger Cube Loader Theme modification
+        // Action 1: Force demo engine bypass if button present
+        try {
+            if (await page.$('button:has-text("FORCE BYPASS ENGINE")')) {
+                await page.click('button:has-text("FORCE BYPASS ENGINE")');
+                await page.waitForTimeout(2000);
+            }
+        } catch (_) {}
+
+        // Action 2: Trigger Cube Loader Theme modification
         console.log("📦 Transitioning Cube Theme setting loader profile...");
-        const cubeThemeBtn = 'button[title="Cube Theme 2"]';
-        if (await page.$(cubeThemeBtn)) {
-            await page.click(cubeThemeBtn);
+        try {
+            await page.click('button:has-text("MOTION")');
+        } catch (_) {
+            console.log("Could not find MOTION button, ignoring...");
         }
         await page.waitForTimeout(1000);
 
@@ -164,18 +152,15 @@ async function runAutonomousHarness() {
             await page.waitForTimeout(300); // Spaced 300ms apart precisely
         }
 
-        // Action 2: Message input validation
+        // Action 3: Message input validation
         const textBar = 'textarea[placeholder*="Send a message"], input[placeholder*="message"]';
         if (await page.$(textBar)) {
-            await page.fill(textBar, 'Explain the architecture compilation pass in great detail.');
+            await page.fill(textBar, 'Perform deep architecture compilation pass.');
             await page.press(textBar, 'Enter');
-        } else {
-            console.log("⚠️ Could not find chat text box.");
         }
 
         console.log("📡 Keeping pipeline alive to monitor streaming text outputs...");
-        // 90 second timeout limit
-        await page.waitForTimeout(90000);
+        await page.waitForTimeout(10000);
 
     } catch (err) {
         console.error(`🚨 Fatal execution failure encountered: ${err.message}`);

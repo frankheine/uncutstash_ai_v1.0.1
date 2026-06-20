@@ -23,8 +23,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-public/models/*
-public/wasm/*
+public/*
 .agents/rules/uncutstash-si.md
 
 check-screenshot.png
@@ -32,3 +31,5 @@ check-screenshot.png
 agent_checkpoint*.png
 uncutstash_ai_v1.0.1/
 repomix-output.xml
+git-filter-repo.py
+git_search.txt

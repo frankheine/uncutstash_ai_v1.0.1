@@ -63,17 +63,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             {/* Sidebar Tabs */}
             <div className="w-full md:w-64 bg-white/5 border-b md:border-b-0 md:border-r border-white/10 p-4 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto">
               <h2 className="text-white/40 text-[10px] uppercase tracking-widest font-mono mb-2 hidden md:block px-2 pt-2">Settings</h2>
-              
+
               <button onClick={() => setActiveTab('general')} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm whitespace-nowrap ${activeTab === 'general' ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}>
                 <Sliders size={16} />
                 General
               </button>
-              
+
               <button onClick={() => setActiveTab('inference')} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm whitespace-nowrap ${activeTab === 'inference' ? 'bg-pink-500/20 text-pink-300 border border-pink-500/30' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}>
                 <Cpu size={16} />
                 Inference Engine
               </button>
-              
+
               <button onClick={() => setActiveTab('data')} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm whitespace-nowrap ${activeTab === 'data' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}>
                 <HardDrive size={16} />
                 Data & Storage
@@ -97,7 +97,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     <h3 className="text-lg font-medium text-white flex items-center gap-2"><Sparkles size={18} className="text-violet-400" /> UI Customization</h3>
                     <p className="text-sm text-white/50 mt-1">Configure your workspace aesthetics and interactions.</p>
                   </div>
-                  
+
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
                       <div>
@@ -135,7 +135,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                       <div className="flex justify-between">
                         <label className="text-sm font-medium text-white/90">System Prompt (Custom Instructions)</label>
                       </div>
-                      <textarea 
+                      <textarea
                         value={systemPrompt}
                         onChange={(e) => setSystemPrompt(e.target.value)}
                         className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-sm text-white/80 resize-none focus:outline-none focus:border-pink-500/50 focus:ring-1 focus:ring-pink-500/50 transition-all font-mono leading-relaxed"
@@ -148,11 +148,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                         <label className="text-sm font-medium text-white/90">Temperature (Creativity)</label>
                         <span className="text-xs font-mono text-pink-300">{temperature.toFixed(2)}</span>
                       </div>
-                      <input 
-                        type="range" min="0" max="2" step="0.1" 
+                      <input
+                        type="range" min="0" max="2" step="0.1"
                         value={temperature}
                         onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                        className="w-full accent-pink-500" 
+                        className="w-full accent-pink-500"
                       />
                       <div className="flex justify-between text-[10px] text-white/40 uppercase tracking-widest font-mono">
                         <span>Deterministic</span>
@@ -165,11 +165,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                         <label className="text-sm font-medium text-white/90">Max Output Tokens</label>
                         <span className="text-xs font-mono text-pink-300">{maxTokens}</span>
                       </div>
-                      <input 
-                        type="range" min="256" max="8192" step="256" 
+                      <input
+                        type="range" min="256" max="8192" step="256"
                         value={maxTokens}
                         onChange={(e) => setMaxTokens(parseInt(e.target.value))}
-                        className="w-full accent-pink-500" 
+                        className="w-full accent-pink-500"
                       />
                     </div>
                   </div>
@@ -222,7 +222,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
                       <div>
                         <div className="text-sm font-medium text-white/90">CPU Inference (User Opt-In Only)</div>
-                        <div className="text-xs text-white/50 mt-1">If WebGPU fails to initialize, you will be prompted to attempt CPU inference via WASM SIMD. Extremely slow — only use if WebGPU is unavailable on this device. CPU is never triggered automatically.</div>
+                        <div className="text-xs text-white/50 mt-1">WebGPU is required for inference. If it fails to initialize, generation will not be available until the issue is resolved. There is currently no CPU fallback path.</div>
                       </div>
                       <div className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[10px] font-mono text-white/40 uppercase tracking-widest">
                         Prompt-Only

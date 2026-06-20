@@ -16,14 +16,14 @@ async function safeScreenshot(page, filename, options = {}) {
     console.log("🤖 [AGENT HARNESS] Initiating WebGPU test sequence...");
 
     const os = require('os');
-    const path = require('path');
-    const userDataDir = path.resolve('.playwright_cache');
-    const browser = await chromium.launchPersistentContext(userDataDir, {
+    const browser = await chromium.launch({
         headless: true,
-        channel: 'msedge', // Force use of full Edge browser for proper WebGPU stack on Windows
+        // channel: 'msedge', // removed to prevent hanging
         viewport: { width: 1280, height: 800 },
         bypassCSP: true,
         args: [
+            '--headless=new',
+            '--no-sandbox',
             '--enable-gpu', // Explicitly enable GPU
             '--enable-unsafe-webgpu',
             '--enable-webgpu-developer-features', // Expose shader-f16
@@ -32,13 +32,15 @@ async function safeScreenshot(page, filename, options = {}) {
             '--ignore-gpu-blocklist',
             '--disable-software-rasterizer', // Prevent CPU fallback at Chrome level
             '--use-angle=vulkan', // Switch to Vulkan to bypass D3D11 limits and expose f16
+            '--use-gl=egl',
+            '--use-cmd-decoder=passthrough',
             '--disable-web-security',
             '--unlimited-storage',
         ],
     });
 
-    // Use the default page from the persistent context
-    const page = browser.pages()[0];
+    // Create a new page since we aren't using persistent context
+    const page = await browser.newPage();
 
     // 2. MIRROR CONSOLE & ERRORS TO THE AGENT'S TERMINAL
     page.on('console', msg => {
@@ -84,8 +86,8 @@ async function safeScreenshot(page, filename, options = {}) {
 
     try {
         // 3. Navigate to Vite Localhost (Adjust port if necessary)
-        console.log("🤖 [AGENT HARNESS] Navigating to http://127.0.0.1:5173");
-        await page.goto('http://127.0.0.1:5173/', { waitUntil: 'domcontentloaded', timeout: 120000 });
+        console.log("🤖 [AGENT HARNESS] Navigating to http://localhost:5173");
+        await page.goto('http://localhost:5173/', { waitUntil: 'domcontentloaded', timeout: 120000 });
         console.log("🤖 [AGENT HARNESS] DOM Loaded. Waiting for initialization sequence...");
 
         // 4. Verify WebGPU Context
@@ -99,12 +101,8 @@ async function safeScreenshot(page, filename, options = {}) {
         await page.waitForTimeout(2000);
         await safeScreenshot(page, 'check-screenshot-boot.png', { fullPage: true });
 
-        // Click Bypass to verify the chat window
-        console.log("🤖 [AGENT HARNESS] Clicking FORCE BYPASS button to verify main UI...");
-        await page.click('button:has-text("FORCE BYPASS ENGINE")');
-
         console.log("🤖 [AGENT HARNESS] Waiting for Sovereign Dual Engine to finish loading...");
-        await page.waitForSelector('.engine-ready-indicator', { state: 'attached', timeout: 10000 }); 
+        await page.waitForSelector('.engine-ready-indicator', { state: 'attached', timeout: 180000 });
 
         // Wait 2 seconds for GSAP animations to complete
         await page.waitForTimeout(2000);

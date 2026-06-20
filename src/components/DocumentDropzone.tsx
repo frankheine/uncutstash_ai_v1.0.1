@@ -65,7 +65,7 @@ export const DocumentDropzone: React.FC<DocumentDropzoneProps> = ({ onProgress }
                 
                 // Embed the chunk
                 const { embedding } = await runWorker<{ embedding: number[] }>('embed', { text: chunk }, (msg) => {
-                    if (msg.log) onProgress(msg.log);
+                    if ((msg as any).log) onProgress((msg as any).log);
                 });
 
                 // Store in retrieval worker

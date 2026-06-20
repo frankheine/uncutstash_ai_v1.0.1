@@ -28,13 +28,14 @@ export default function App() {
     const [engineReady, setEngineReady] = useState(false);
     const [isBooting, setIsBooting] = useState(false);
     const [useZeroCopy, setUseZeroCopy] = useState(false);
-    const [targetModel, setTargetModel] = useState("Dolphin-3-Abliterated-1B");
+    const [targetModel, setTargetModel] = useState("Llama-3.2-1B-Instruct-q4f32_1-MLC");
     const [draftModel, setDraftModel] = useState<string | null>(null);
     const [borderStyle, setBorderStyle] = useState(2); // Option 2 Default
     const [cubeVariant, setCubeVariant] = useState(1); // Cube variation state
+    const [bgVariant, setBgVariant] = useState(2); // Procedural Background state
     const chatPanelRef = useRef<HTMLDivElement>(null);
     const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
-    const [execMode, setExecMode] = useState<'local'|'edge'>('edge');
+    const [execMode, setExecMode] = useState<'local' | 'edge'>('edge');
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [scrollMode, setScrollMode] = useState<'container' | 'page'>('container');
 
@@ -82,6 +83,7 @@ Private Intelligence Engine...`);
         const bootSequence = async () => {
             // GPU probing and f16/f32 auto-routing is now handled inside
             // bootstrapSpeculativePipeline itself, including CPU fallback.
+            import('./rag/pipeline').then(m => m.setExecutionMode(execMode));
             bootstrapSpeculativePipeline(targetModel, draftModel, (text) => {
                 setDownloadLog(text);
                 const match = text.match(/\[(\d+)\/\d+\]/);
@@ -91,26 +93,26 @@ Private Intelligence Engine...`);
                     setDownloadPercent(prev => (prev < 90 ? prev + 5 : prev));
                 }
             })
-            .then(() => {
-                setDownloadPercent(100);
-                setIsBooting(false);
-                if (!engineReady) {
-                    if ('startViewTransition' in document) {
-                        (document as any).startViewTransition(() => setEngineReady(true));
-                    } else {
-                        setEngineReady(true);
+                .then(() => {
+                    setDownloadPercent(100);
+                    setIsBooting(false);
+                    if (!engineReady) {
+                        if ('startViewTransition' in document) {
+                            (document as any).startViewTransition(() => setEngineReady(true));
+                        } else {
+                            setEngineReady(true);
+                        }
                     }
-                }
-            })
-            .catch(err => {
-                setIsBooting(false);
-                setBootError(`Initialization Failed: ${err.message || err}`);
-                bootLockRef.current = false;
-            });
+                })
+                .catch(err => {
+                    setIsBooting(false);
+                    setBootError(`Initialization Failed: ${err.message || err}`);
+                    bootLockRef.current = false;
+                });
         };
 
         bootSequence();
-        
+
         return () => {
             // Intentionally not resetting bootLockRef to prevent React StrictMode double-booting
         };
@@ -141,7 +143,7 @@ Private Intelligence Engine...`);
             }
             lenis = new Lenis({
                 wrapper: container === window ? window : (container as HTMLElement),
-                content: container === window ? document.documentElement : (container && 'firstElementChild' in container ? (container as HTMLElement).firstElementChild : null as unknown as HTMLElement),
+                content: container === window ? document.documentElement : (container && 'firstElementChild' in container ? (container as HTMLElement).firstElementChild as HTMLElement : undefined),
                 duration: 1.2,
                 easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
                 orientation: 'vertical',
@@ -278,16 +280,15 @@ Private Intelligence Engine...`);
                                     setExecMode(newMode);
                                     import('./rag/pipeline').then(m => m.setExecutionMode(newMode));
                                 }}
-                                className={`px-3 py-1.5 rounded-full text-xs font-mono tracking-widest backdrop-blur-md border transition-all ${
-                                    execMode === 'edge' 
-                                    ? 'bg-blue-500/20 border-blue-500/50 text-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.4)]' 
+                                className={`px-3 py-1.5 rounded-full text-xs font-mono tracking-widest backdrop-blur-md border transition-all ${execMode === 'edge'
+                                    ? 'bg-blue-500/20 border-blue-500/50 text-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.4)]'
                                     : 'bg-green-500/20 border-green-500/50 text-green-300 shadow-[0_0_15px_rgba(34,197,94,0.4)]'
-                                }`}
+                                    }`}
                             >
                                 {execMode === 'local' ? 'SOVEREIGN LOCAL' : 'EDGE NETWORK'}
                             </button>
                         </div>
-                        <ModelSelector 
+                        <ModelSelector
                             isBooting={isBooting}
                             execMode={execMode}
                             onModelChange={(target, draft) => {
@@ -295,34 +296,39 @@ Private Intelligence Engine...`);
                                 setDraftModel(draft);
                             }}
                         />
-                        <StyleSelector 
+                        <StyleSelector
                             currentStyle={borderStyle}
                             onStyleChange={setBorderStyle}
                         />
                     </div>
 
-                    <div className="fixed inset-0 z-0 pointer-events-none">
-                        <ProceduralBackground slowMode={engineReady} />
+                    <div className="absolute inset-0 z-0 pointer-events-none">
+                        <ProceduralBackground slowMode={engineReady} variant={bgVariant} />
                     </div>
 
                     {!engineReady && (
                         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-10 pointer-events-none backdrop-blur-md bg-black/40 transition-opacity duration-1000">
-                            <div className="flex flex-col items-center gap-6">
-                                <CubeLoader variant={cubeVariant} />
-                                <div className="flex gap-2 pointer-events-auto">
+                            <div className="flex flex-col items-center gap-6 z-10 pointer-events-auto">
+                                <div className="text-white/50 text-xs font-mono uppercase tracking-widest mb-2 text-center">
+                                    Cube Variant
+                                </div>
+                                <div className="flex gap-2">
                                     {[1, 2, 3, 4].map(idx => (
                                         <button
                                             key={idx}
                                             onClick={() => setCubeVariant(idx)}
                                             className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-mono transition-colors backdrop-blur-md border ${cubeVariant === idx ? 'bg-violet-500/40 border-violet-400 text-white shadow-[0_0_15px_rgba(139,92,246,0.6)]' : 'bg-black/40 border-white/10 text-white/50 hover:bg-white/10 hover:text-white'}`}
-                                            title={`Cube Theme ${idx}`}
+                                            title={`Cube ${idx}`}
                                         >
                                             {idx}
                                         </button>
                                     ))}
                                 </div>
                             </div>
-                            <div className="flex flex-col items-center gap-4">
+                            <div className="relative z-10 flex items-center justify-center pointer-events-none h-48">
+                                <CubeLoader variant={cubeVariant} />
+                            </div>
+                            <div className="relative z-10 flex flex-col items-center gap-4">
                                 <div className="flex items-center gap-3 text-white/80 text-xs font-mono tracking-widest uppercase">
                                     <div className={`w-2 h-2 rounded-full ${bootError ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,0.8)]'} animate-pulse`} />
                                     <span>{downloadLog}</span>
@@ -376,7 +382,12 @@ Private Intelligence Engine...`);
                         style={{ opacity: 0, pointerEvents: engineReady ? 'auto' : 'none' }}
                     >
                         {engineReady && (
-                            <div className="absolute top-4 right-4 z-50 flex gap-2 items-center">
+                            <div className="absolute top-4 right-4 z-50 flex gap-2 items-center pointer-events-auto">
+                                <ModelSelector
+                                    execMode={execMode}
+                                    isBooting={isBooting}
+                                    onModelChange={(t, d) => { setTargetModel(t); setDraftModel(d); }}
+                                />
                                 <button
                                     onClick={() => setScrollMode(prev => prev === 'container' ? 'page' : 'container')}
                                     className="px-3 py-1.5 rounded-full text-xs font-mono backdrop-blur-md border border-white/10 bg-black/40 text-white/80 hover:bg-white/10 transition-colors shadow-[0_0_10px_rgba(0,0,0,0.5)]"
@@ -395,6 +406,20 @@ Private Intelligence Engine...`);
                                         {idx}
                                     </button>
                                 ))}
+                                <div className="w-[1px] h-6 bg-white/20 mx-1"></div>
+                                <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md rounded-full px-2 py-1 border border-white/10">
+                                    <span className="text-[10px] text-white/50 uppercase tracking-widest px-2">BG</span>
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(idx => (
+                                        <button
+                                            key={`bg-${idx}`}
+                                            onClick={() => setBgVariant(idx)}
+                                            className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-mono transition-colors ${bgVariant === idx ? 'bg-violet-500/60 text-white border border-violet-400' : 'bg-white/5 text-white/40 hover:bg-white/20'}`}
+                                            title={`Background ${idx}`}
+                                        >
+                                            {idx}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         )}
                         <SpatialPanel depth={20} className={`w-full h-full rounded-2xl md:rounded-3xl overflow-hidden transition-all duration-700 ${getBorderClass(borderStyle)}`}>

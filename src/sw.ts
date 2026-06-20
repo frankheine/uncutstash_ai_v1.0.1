@@ -20,7 +20,7 @@ const OPFSCache = {
         try {
             const root = await navigator.storage.getDirectory();
             const filename = getOPFSFilename(request.url);
-            
+
             const chunks: File[] = [];
             let chunkIndex = 0;
             while (true) {
@@ -28,7 +28,7 @@ const OPFSCache = {
                     const handle = await root.getFileHandle(`${filename}_part${chunkIndex}`);
                     chunks.push(await handle.getFile());
                     chunkIndex++;
-                } catch(e) {
+                } catch (e) {
                     break;
                 }
             }
@@ -45,7 +45,7 @@ const OPFSCache = {
                 });
             }
             return undefined;
-        } catch(e) {
+        } catch (e) {
             return undefined;
         }
     },
@@ -53,15 +53,15 @@ const OPFSCache = {
     async put(request: Request, response: Response): Promise<void> {
         const root = await navigator.storage.getDirectory();
         const filename = getOPFSFilename(request.url);
-        
+
         // Ensure no single JS memory buffer exceeds ~150MB (well below 256MB iOS limit)
-        const CHUNK_LIMIT = 150 * 1024 * 1024; 
+        const CHUNK_LIMIT = 150 * 1024 * 1024;
         const reader = response.body!.getReader();
-        
+
         let chunkIndex = 0;
         let currentChunkSize = 0;
         let currentBufferChunks: Uint8Array[] = [];
-        
+
         while (true) {
             const { done, value } = await reader.read();
             if (done) {
@@ -70,10 +70,10 @@ const OPFSCache = {
                 }
                 break;
             }
-            
+
             currentBufferChunks.push(value);
             currentChunkSize += value.length;
-            
+
             if (currentChunkSize >= CHUNK_LIMIT) {
                 await OPFSCache.writeChunk(root, `${filename}_part${chunkIndex}`, currentBufferChunks);
                 chunkIndex++;
@@ -113,7 +113,11 @@ self.addEventListener("activate", (event) => {
 });
 
 // Programmatic cache interception loop
-self.addEventListener("fetch", (event) => {
+self.addEventListener("fetch", (event: any) => {
+    // CRITICAL FIX: Only intercept GET requests. 
+    // The Cache API (cache.put) will fatally crash if fed a HEAD or POST request.
+    if (event.request.method !== 'GET') return;
+
     const url = new URL(event.request.url);
 
     // Filter heavy weights vs standard JSON config files
@@ -124,7 +128,7 @@ self.addEventListener("fetch", (event) => {
         event.respondWith(
             (async () => {
                 // OPFS for heavy assets, standard Cache API for lightweight JSON configs
-                const cachedResponse = isHeavyAsset 
+                const cachedResponse = isHeavyAsset
                     ? await OPFSCache.match(event.request)
                     : await (await caches.open(MODEL_CACHE_NAME)).match(event.request);
 
@@ -135,14 +139,18 @@ self.addEventListener("fetch", (event) => {
 
                 // Cache miss execution path: acquire via network connection and write to local disk
                 try {
-                    // STRICT OFFLINE ARCHITECTURE / AIRPLANE MODE ENFORCEMENT
-                    // Only allow fetching from localhost/origin or whitelisted domains
+                    // ZERO-TRUST EDGE FIREWALL
                     const urlObj = new URL(event.request.url);
                     const isLocal = urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1' || urlObj.hostname === self.location.hostname;
-                    
+
                     if (!isLocal) {
-                        console.warn(`[Offline Enforcer] Blocked external request to ${urlObj.href}`);
-                        throw new Error("Airplane Mode Enforced: External network requests blocked.");
+                        const allowedDomains = ['huggingface.co', 'cdn.jsdelivr.net', 'raw.githubusercontent.com'];
+                        const isAllowedDomain = allowedDomains.some(domain => urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain));
+
+                        if (!isAllowedDomain) {
+                            console.warn(`[Zero-Trust Firewall] Blocked unauthorized external request: ${urlObj.href}`);
+                            return new Response("Blocked by Sovereign Zero-Trust Firewall.", { status: 403 });
+                        }
                     }
 
                     const networkResponse = await fetch(event.request);

@@ -2,10 +2,11 @@
 // ============================================================================
 // SOVEREIGN RAG PIPELINE — FIXED BOOTSTRAP WITH GPU→CPU FALLBACK
 // ============================================================================
-import { CreateWebWorkerMLCEngine, prebuiltAppConfig, AppConfig, ModelRecord } from "@mlc-ai/web-llm";
+import { CreateWebWorkerMLCEngine, prebuiltAppConfig, AppConfig, ModelRecord, MLCEngine, InitProgressReport, MLCEngineConfig } from "@mlc-ai/web-llm";
 
 export interface ExtendedModelRecord extends ModelRecord {
     model_url?: string;
+    model_lib_url?: string;
 }
 
 // Explicit Worker type keys for strict compilation tracking
@@ -14,7 +15,7 @@ export type WorkerType = 'embed' | 'retrieve' | 'rerank' | 'inference';
 export type ExecutionMode = 'local' | 'edge';
 
 // DEFAULT TO EDGE: CDN-resolved WASMs work out of the box without local files
-export let currentExecutionMode: ExecutionMode = 'local'; // Set to local by default to use custom weights
+export let currentExecutionMode: ExecutionMode = 'edge'; // Set to edge by default to match UI
 
 export function setExecutionMode(mode: ExecutionMode) {
     currentExecutionMode = mode;
@@ -23,23 +24,36 @@ export function setExecutionMode(mode: ExecutionMode) {
 
 const customModels: ExtendedModelRecord[] = [
     {
-        model_url: "/models/SNOWflake_v1.2_UNCUTstash-1B",
-        model_id: "SNOWflake_v1.2_UNCUTstash-1B",
-        model_lib_url: "/wasm/SNOWflake_v1.2_UNCUTstash-1B-webgpu.wasm",
-        vram_required_MB: 1024,
+        model: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f32_1-MLC/resolve/main/",
+        model_url: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f32_1-MLC/resolve/main/",
+        model_id: "Llama-3.2-1B-Instruct-q4f32_1-MLC",
+        model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-1B-Instruct/Llama-3.2-1B-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm",
+        model_lib_url: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-1B-Instruct/Llama-3.2-1B-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm",
+        vram_required_MB: 1500,
         low_resource_required: true,
     },
     {
-        model_url: "https://huggingface.co/mlc-ai/dolphin-2.9-llama3-1b-q4f32_1-MLC/resolve/main/",
-        model_id: "Dolphin-3-Abliterated-1B",
-        model_lib_url: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/dolphin-2.9-llama3-1b/dolphin-2.9-llama3-1b-q4f32_1-ctx4k_cs1k-webgpu.wasm",
+        model: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f16_1-MLC/resolve/main/",
+        model_url: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f16_1-MLC/resolve/main/",
+        model_id: "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+        model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-1B-Instruct/Llama-3.2-1B-Instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm",
+        model_lib_url: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-1B-Instruct/Llama-3.2-1B-Instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm",
         vram_required_MB: 1500,
+        low_resource_required: false,
+    },
+    {
+        model: "/models/SNOWflake_v1.2_UNCUTstash-1B",
+        model_url: "/models/SNOWflake_v1.2_UNCUTstash-1B",
+        model_id: "SNOWflake_v1.2_UNCUTstash-1B",
+        model_lib: "/wasm/SNOWflake_v1.2_UNCUTstash-1B-webgpu.wasm",
+        model_lib_url: "/wasm/SNOWflake_v1.2_UNCUTstash-1B-webgpu.wasm",
+        vram_required_MB: 1024,
         low_resource_required: true,
     }
 ];
 
-export function getModelList() {
-    return [...customModels, ...prebuiltAppConfig.model_list];
+export function getModelList(): ExtendedModelRecord[] {
+    return [...customModels, ...prebuiltAppConfig.model_list as ExtendedModelRecord[]];
 }
 
 let embedWorker: Worker | null = null;
@@ -47,9 +61,9 @@ let retrieveWorker: Worker | null = null;
 let rerankWorker: Worker | null = null;
 let inferenceWorker: Worker | null = null;
 let networkWorker: Worker | null = null;
+const cpuFallbackWorker: Worker | null = null;
 
-let currentEngine: any = null;
-let activeModelId: string | null = null;
+let currentEngine: MLCEngine | null = null;
 
 export const getWorkers = {
     getEmbed: () => {
@@ -82,14 +96,14 @@ export const getWorkers = {
 // PRIMARY BOOTSTRAP — GPU FIRST, CPU FALLBACK
 // ============================================================================
 export async function bootstrapSpeculativePipeline(
-  targetModel: string,
-  draftModel: string | null,
-  progressCallback: (text: string) => void
+    targetModel: string,
+    draftModel: string | null,
+    progressCallback: (text: string) => void
 ) {
     // Reset state for clean bootstrap
     if (currentEngine) {
         console.log(`[Pipeline] Unloading current engine to mount new target: ${targetModel}`);
-        try { await currentEngine.unload(); } catch (_) { /* ignore */ }
+        try { await currentEngine.unload(); } catch { /* ignore */ }
         currentEngine = null;
     }
     if (inferenceWorker) {
@@ -100,28 +114,33 @@ export async function bootstrapSpeculativePipeline(
     // ── STAGE 1: Try WebGPU via Web-LLM ────────────────────────────────────
     try {
         progressCallback("Probing WebGPU adapter...");
+        if (!('gpu' in navigator)) { throw new Error("navigator.gpu is undefined. This browser or context does not expose the WebGPU API."); }
 
         progressCallback(`Validating model registry for ${targetModel}...`);
-        
+
         // Ensure model.json is actually accessible and not intercepted by Vite SPA
         const targetModelConfig = getModelList().find(m => m.model_id === targetModel);
         if (targetModelConfig && targetModelConfig.model_url) {
             try {
-                const modelJsonUrl = targetModelConfig.model_url.endsWith('/') ? 
-                    `${targetModelConfig.model_url}model.json` : 
-                    `${targetModelConfig.model_url}/model.json`;
-                
-                const headCheck = await fetch(modelJsonUrl, { method: 'HEAD' });
+                const modelJsonUrl = targetModelConfig.model_url.endsWith('/') ?
+                    `${targetModelConfig.model_url}mlc-chat-config.json` :
+                    `${targetModelConfig.model_url}/mlc-chat-config.json`;
+                const hfToken = import.meta.env.VITE_HF_TOKEN || localStorage.getItem('HF_TOKEN');
+                const headers: HeadersInit = {};
+                if (hfToken) headers['Authorization'] = `Bearer ${hfToken}`;
+
+                const headCheck = await fetch(modelJsonUrl, { method: 'HEAD', headers });
                 if (!headCheck.ok) {
-                    throw new Error(`Model weights not found at ${modelJsonUrl} (HTTP ${headCheck.status})`);
+                    const authMsg = headCheck.status === 401 ? ' (Gated model. Make sure VITE_HF_TOKEN is set in .env)' : '';
+                    throw new Error(`Model weights not found at ${modelJsonUrl} (HTTP ${headCheck.status})${authMsg}`);
                 }
                 const contentType = headCheck.headers.get('content-type');
                 if (contentType && contentType.includes('text/html')) {
                     throw new Error(`Unexpected token < Error prevented. Model directory not found. Server intercepted with index.html.`);
                 }
-            } catch (validationErr: any) {
+            } catch (validationErr: unknown) {
                 console.error("[Pipeline] Pre-validation failed:", validationErr);
-                throw new Error(`Model validation failed: ${validationErr.message}`);
+                throw new Error(`Model validation failed: ${(validationErr as Error).message}`, { cause: validationErr });
             }
         }
 
@@ -133,14 +152,14 @@ export async function bootstrapSpeculativePipeline(
             { type: 'module' }
         );
 
-        const configOpts: any = {
-            initProgressCallback: (progress: any) => {
+        const configOpts: MLCEngineConfig = {
+            initProgressCallback: (progress: InitProgressReport) => {
                 progressCallback(progress.text);
             }
         };
 
         if (draftModel) {
-            configOpts.speculativeEngineConfig = {
+            (configOpts as any).speculativeEngineConfig = {
                 draft_model: draftModel
             };
         }
@@ -151,30 +170,34 @@ export async function bootstrapSpeculativePipeline(
             const appConfig: AppConfig = {
                 ...prebuiltAppConfig,
                 model_list: [
-                    ...customModels,
-                    ...prebuiltAppConfig.model_list.map(model => ({
-                        ...model,
-                        model_lib_url: `/wasm/${model.model_id}-webgpu.wasm`
-                    }))
+                    ...customModels as ModelRecord[],
+                    ...prebuiltAppConfig.model_list.map(model => {
+                        const baseModel = { ...model };
+                        (baseModel as ExtendedModelRecord).model_url = (model as ExtendedModelRecord).model_url || `https://huggingface.co/mlc-ai/${model.model_id}/resolve/main/`;
+                        baseModel.model_lib = `/wasm/${model.model_id}-webgpu.wasm`;
+                        (baseModel as ExtendedModelRecord).model_lib_url = `/wasm/${model.model_id}-webgpu.wasm`;
+                        return baseModel as ModelRecord;
+                    })
                 ]
             };
             configOpts.appConfig = appConfig;
+        } else {
+            configOpts.appConfig = { ...prebuiltAppConfig, model_list: [...customModels as ModelRecord[], ...prebuiltAppConfig.model_list] };
         }
         // Edge mode: DON'T touch appConfig at all — let Web-LLM use its
         // built-in prebuiltAppConfig with correct jsdelivr CDN URLs
 
-        currentEngine = await CreateWebWorkerMLCEngine(
+        currentEngine = (await CreateWebWorkerMLCEngine(
             inferenceWorker,
             targetModel,
             configOpts
-        );
+        )) as unknown as MLCEngine;
 
-        activeModelId = targetModel;
         progressCallback("✅ WebGPU engine online — sovereign intelligence active.");
         return currentEngine;
 
-    } catch (gpuError: any) {
-        console.error("[Pipeline] WebGPU bootstrap failed:", gpuError.message || gpuError);
+    } catch (gpuError: unknown) {
+        console.error("[Pipeline] WebGPU bootstrap failed:", (gpuError as Error).message || gpuError);
         progressCallback(`🚨 FATAL: WebGPU initialization failed. Hardware acceleration is strictly required.`);
 
         // Clean up the failed GPU worker
@@ -184,9 +207,7 @@ export async function bootstrapSpeculativePipeline(
         }
         currentEngine = null;
 
-        throw new Error(
-            `WebGPU is strictly required for this application but failed to initialize. Error: ${gpuError.message || gpuError}`
-        );
+        throw new Error(`WebGPU is strictly required for this application but failed to initialize. Error: ${(gpuError as Error).message || gpuError}`, { cause: gpuError });
     }
 }
 
@@ -196,13 +217,13 @@ export async function bootstrapSpeculativePipeline(
 // ============================================================================
 export function runWorker<T>(
     targetWorkerType: WorkerType,
-    payload: any,
-    onProgress?: (msg: any) => void,
+    payload: Record<string, unknown>,
+    onProgress?: (msg: unknown) => void,
     timeoutMs: number = 60000
 ): Promise<T> {
     return new Promise((resolve, reject) => {
         const taskId = crypto.randomUUID();
-        
+
         const timeoutId = setTimeout(() => {
             reject(new Error(`Worker ${targetWorkerType} timed out after ${timeoutMs}ms`));
         }, timeoutMs);
@@ -221,7 +242,7 @@ export function runWorker<T>(
                             onProgress({ status: 'progress', log: '🧠 Generating response via WebGPU...' });
                         }
 
-                        const response = await currentEngine.chat.completions.create({
+                        const response = await currentEngine!.chat.completions.create({
                             messages: [{ role: "user", content: promptContent }],
                             temperature: 0.2,
                             stream: true
@@ -237,7 +258,7 @@ export function runWorker<T>(
                             }
                         }
                         clearTimeout(timeoutId);
-                        resolve({ text: fullResponseText } as any);
+                        resolve({ text: fullResponseText } as unknown as T);
                     } catch (err) {
                         clearTimeout(timeoutId);
                         reject(err);
@@ -247,7 +268,34 @@ export function runWorker<T>(
                 return;
             }
 
-            // PATH B: Nothing is initialized — reject immediately
+            // PATH B: CPU Fallback is alive
+            if (cpuFallbackWorker) {
+                const handleCpuResponse = (e: MessageEvent) => {
+                    if (e.data.taskId === taskId || e.data.id === taskId) {
+                        if (e.data.status === 'success') {
+                            clearTimeout(timeoutId);
+                            cpuFallbackWorker!.removeEventListener('message', handleCpuResponse);
+                            resolve({ text: e.data.text || e.data.result?.text } as T);
+                        } else if (e.data.status === 'progress' && onProgress) {
+                            if (e.data.delta) onProgress({ status: 'progress', delta: e.data.delta });
+                            else onProgress({ status: 'progress', log: e.data.message });
+                        } else if (e.data.status === 'error') {
+                            clearTimeout(timeoutId);
+                            cpuFallbackWorker!.removeEventListener('message', handleCpuResponse);
+                            reject(new Error(e.data.message));
+                        }
+                    }
+                };
+                cpuFallbackWorker.addEventListener('message', handleCpuResponse);
+                cpuFallbackWorker.postMessage({
+                    action: 'GENERATE',
+                    taskId,
+                    payload
+                });
+                return;
+            }
+
+            // PATH C: Nothing is initialized — reject immediately
             clearTimeout(timeoutId);
             reject(new Error(
                 "No inference engine available. WebGPU initialization failed."

@@ -15,22 +15,27 @@ export interface ModelPair {
 
 export const MODEL_CATALOG: ModelPair[] = [
     {
-        displayName: "UNCUTstash 3B (Fast)",
-        targetModel: "Llama-3.2-3B-Instruct-q4f16_1-MLC",
-        draftModel: "Llama-3.2-1B-Instruct-q4f16_1-MLC"
+        displayName: "Llama 3.2 1B (Instruct)",
+        targetModel: "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+        draftModel: null
     },
     {
-        displayName: "SNOWflake 1B (Standard)",
-        targetModel: "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+        displayName: "SNOWflake 3B (Standard)",
+        targetModel: "SNOWflake_v1.2_UNCUTstash-3B",
+        draftModel: "SNOWflake_v1.2_UNCUTstash-1B"
+    },
+    {
+        displayName: "SNOWflake 1B (Fast)",
+        targetModel: "SNOWflake_v1.2_UNCUTstash-1B",
         draftModel: null
     }
 ];
 
 export const AVAILABLE_TARGETS = [
-    "Llama-3.2-3B-Instruct-q4f16_1-MLC",
-    "Llama-3.2-3B-Instruct-q4f32_1-MLC",
     "Llama-3.2-1B-Instruct-q4f16_1-MLC",
-    "Llama-3.2-1B-Instruct-q4f32_1-MLC"
+    "Llama-3.2-3B-Instruct-q4f16_1-MLC",
+    "SNOWflake_v1.2_UNCUTstash-1B",
+    "SNOWflake_v1.2_UNCUTstash-3B",
 ];
 
 interface ModelSelectorProps {
@@ -41,11 +46,11 @@ interface ModelSelectorProps {
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isBooting, execMode }) => {
     const [isDevMode, setIsDevMode] = useState(false);
-    
+
     // Normal Mode State
     const [selectedPairIndex, setSelectedPairIndex] = useState(0);
     const [edgeTargetModel, setEdgeTargetModel] = useState("");
-    
+
     // Dev Mode State
     const [devTarget, setDevTarget] = useState(AVAILABLE_TARGETS[0]);
     const [devDraft, setDevDraft] = useState<string | null>(AVAILABLE_TARGETS[2]);
@@ -78,8 +83,13 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
         }
     }, [isDevMode, selectedPairIndex, devTarget, devDraft, useDraft, execMode, edgeTargetModel]);
 
-    const activeLabel = execMode === 'edge' 
-        ? (edgeTargetModel || "Loading Edge Models...")
+    const getDisplayName = (targetModelId: string) => {
+        const found = MODEL_CATALOG.find(m => m.targetModel === targetModelId);
+        return found ? found.displayName : targetModelId;
+    };
+
+    const activeLabel = execMode === 'edge'
+        ? (edgeTargetModel ? getDisplayName(edgeTargetModel) : "Loading Edge Models...")
         : MODEL_CATALOG[selectedPairIndex].displayName;
 
     return (
@@ -87,11 +97,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
             <div className="flex items-center gap-2 mb-2">
                 <button
                     onClick={() => setIsDevMode(!isDevMode)}
-                    className={`p-2 rounded-full backdrop-blur-md border transition-all duration-300 ${
-                        isDevMode 
-                        ? 'bg-purple-500/20 border-purple-500/50 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.4)]' 
+                    className={`p-2 rounded-full backdrop-blur-md border transition-all duration-300 ${isDevMode
+                        ? 'bg-purple-500/20 border-purple-500/50 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.4)]'
                         : 'bg-black/40 border-white/10 text-white/50 hover:text-white/80'
-                    }`}
+                        }`}
                     title="Developer Options"
                 >
                     <Settings2 className="w-4 h-4" />
@@ -110,9 +119,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
                         <button
                             onClick={() => !isBooting && setIsOpen(!isOpen)}
                             disabled={isBooting}
-                            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl backdrop-blur-xl border border-white/10 bg-black/40 text-white/90 font-medium transition-all ${
-                                isBooting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/5 cursor-pointer hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]'
-                            }`}
+                            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl backdrop-blur-xl border border-white/10 bg-black/40 text-white/90 font-medium transition-all ${isBooting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/5 cursor-pointer hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]'
+                                }`}
                         >
                             <span className="flex items-center gap-2 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
                                 <Zap className={`w-4 h-4 shrink-0 ${execMode === 'edge' ? 'text-blue-400' : 'text-yellow-400'}`} />
@@ -137,11 +145,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
                                                     setSelectedPairIndex(idx);
                                                     setIsOpen(false);
                                                 }}
-                                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                                                    selectedPairIndex === idx 
-                                                    ? 'bg-white/10 text-white' 
+                                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors ${selectedPairIndex === idx
+                                                    ? 'bg-white/10 text-white'
                                                     : 'text-white/60 hover:bg-white/5 hover:text-white/90'
-                                                }`}
+                                                    }`}
                                             >
                                                 {pair.displayName}
                                                 {selectedPairIndex === idx && <Check className="w-4 h-4" />}
@@ -158,10 +165,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
                                                     className="flex-1 text-left"
                                                 >
                                                     <span className={edgeTargetModel === model.model_id ? "text-white font-medium" : ""}>
-                                                        {model.model_id}
+                                                        {getDisplayName(model.model_id)}
                                                     </span>
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         console.log("Trigger WASM download for", model.model_id);
@@ -203,7 +210,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
                         {/* Target Model */}
                         <div className="space-y-1.5">
                             <label className="text-xs font-medium text-white/50 pl-1">Primary Target Engine</label>
-                            <select 
+                            <select
                                 value={devTarget}
                                 onChange={(e) => setDevTarget(e.target.value)}
                                 disabled={isBooting}
@@ -216,7 +223,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
                         {/* Draft Model Toggle */}
                         <div className="flex items-center justify-between mt-2 pl-1">
                             <label className="text-xs font-medium text-white/50">Speculative Draft Engine</label>
-                            <button 
+                            <button
                                 onClick={() => setUseDraft(!useDraft)}
                                 disabled={isBooting}
                                 className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${useDraft ? 'bg-purple-500' : 'bg-white/20'}`}
@@ -228,13 +235,13 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
                         {/* Draft Model Select */}
                         <AnimatePresence>
                             {useDraft && (
-                                <motion.div 
+                                <motion.div
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: 'auto' }}
                                     exit={{ opacity: 0, height: 0 }}
                                     className="overflow-hidden"
                                 >
-                                    <select 
+                                    <select
                                         value={devDraft || ''}
                                         onChange={(e) => setDevDraft(e.target.value)}
                                         disabled={isBooting}

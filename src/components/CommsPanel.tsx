@@ -24,10 +24,13 @@ export const CommsPanel: React.FC = () => {
 
     useEffect(() => {
         // Connect to local signaling server
-        wsRef.current = new WebSocket('ws://localhost:8080');
-        
-        wsRef.current.onmessage = async (e) => {
-            const data = JSON.parse(e.data);
+        try {
+            wsRef.current = new WebSocket('ws://localhost:8080');
+            wsRef.current.onerror = () => {
+                console.warn("[CommsPanel] Local signaling server offline on port 8080. Start the server if you need P2P connections.");
+            };
+            wsRef.current.onmessage = async (e) => {
+                const data = JSON.parse(e.data);
             if (data.type === 'REGISTERED') {
                 setPeerId(data.peerId);
             } else if (data.type === 'OFFER') {
@@ -37,7 +40,10 @@ export const CommsPanel: React.FC = () => {
             } else if (data.type === 'ICE') {
                 await handleIceCandidate(data.payload);
             }
-        };
+        }; // <-- Close the onmessage callback
+        } catch (err) {
+            console.warn("[CommsPanel] Failed to initialize WebSocket.");
+        }
 
         return () => {
             wsRef.current?.close();

@@ -3,7 +3,6 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 const crossOriginHeaders = {
   "Cross-Origin-Opener-Policy": "same-origin",
@@ -16,7 +15,6 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    tsconfigPaths(),
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src',
@@ -27,6 +25,9 @@ export default defineConfig({
       }
     })
   ],
+  resolve: {
+    tsconfigPaths: true
+  },
   assetsInclude: ['**/*.wasm', '**/*.onnx', '**/*.gguf', '**/*.bin'],
   server: {
     port: 5173,
@@ -51,10 +52,7 @@ export default defineConfig({
   },
   worker: {
     format: 'es',
-    // FIX: Inject path alias mapping inside the independent web worker compilation cycle
-    plugins: () => [
-      tsconfigPaths()
-    ]
+    // Native tsconfig paths handles workers now
   },
   optimizeDeps: {
     exclude: ['@mlc-ai/web-llm', '@wllama/wllama', '@huggingface/transformers'],

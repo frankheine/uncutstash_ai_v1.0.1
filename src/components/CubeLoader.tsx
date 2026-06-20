@@ -8,12 +8,12 @@ export const CubeLoader = ({ variant = 1 }: { variant?: number }) => {
 
   useEffect(() => {
     if (!mountRef.current) return;
-    
+
     // STRICT MODE FIX: Remove any existing canvases to prevent "two cubes" (cube on the left)
     while (mountRef.current.firstChild) {
       mountRef.current.removeChild(mountRef.current.firstChild);
     }
-    
+
     // 1. Setup Scene, Camera, Renderer
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
@@ -49,16 +49,21 @@ export const CubeLoader = ({ variant = 1 }: { variant?: number }) => {
     video.muted = true;
     video.playsInline = true;
     video.autoplay = true;
-    
+
     // Force load and play
     video.load();
-    video.play().catch(e => console.log('Video autoplay blocked:', e));
+    const playPromise = video.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(e => {
+        if (e.name !== 'AbortError') console.log('Video autoplay blocked:', e);
+      });
+    }
 
     const videoTexture = new THREE.VideoTexture(video);
     videoTexture.colorSpace = THREE.SRGBColorSpace;
     videoTexture.minFilter = THREE.LinearFilter;
     videoTexture.magFilter = THREE.LinearFilter;
-    
+
     // 4. Build the core cube material
     const coreMaterial = new THREE.MeshStandardMaterial({
       color: 0xaa88ff, // Base violet tint while loading
@@ -113,7 +118,7 @@ export const CubeLoader = ({ variant = 1 }: { variant?: number }) => {
 
     // 6. Animation Loop & Physics
     let animationId: number;
-    const clock = new THREE.Clock();
+    const startTime = performance.now();
     let isActive = true;
 
     // We use GSAP for Variant 1's specific snappy physics
@@ -121,7 +126,7 @@ export const CubeLoader = ({ variant = 1 }: { variant?: number }) => {
       const rotateCube = async () => {
         if (!isActive) return;
         cubeGroup.rotation.set(0, 0, 0);
-        
+
         await new Promise(r => setTimeout(r, 1200));
         if (!isActive) return;
 
@@ -149,7 +154,7 @@ export const CubeLoader = ({ variant = 1 }: { variant?: number }) => {
 
     const animate = () => {
       animationId = requestAnimationFrame(animate);
-      const t = clock.getElapsedTime();
+      const t = (performance.now() - startTime) / 1000;
 
       // Continuous rotation for variants 2, 3, 4
       if (variant !== 1) {
@@ -161,7 +166,7 @@ export const CubeLoader = ({ variant = 1 }: { variant?: number }) => {
         outerMesh.rotation.x = -t * 0.2;
         outerMesh.rotation.y = -t * 0.3;
       }
-      
+
       if (variant === 3 && outerMesh) {
         outerMesh.rotation.x = t * 0.1;
         outerMesh.rotation.y = t * 0.1;
@@ -187,16 +192,22 @@ export const CubeLoader = ({ variant = 1 }: { variant?: number }) => {
 
     animate();
 
-    // 7. Cleanup
     return () => {
       isActive = false;
       cancelAnimationFrame(animationId);
       import('gsap').then(({ default: gsap }) => gsap.killTweensOf(cubeGroup.rotation));
-      video.pause();
-      video.src = '';
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          video.pause();
+          video.src = '';
+        }).catch(() => { });
+      } else {
+        video.pause();
+        video.src = '';
+      }
       if (mountRef.current && renderer.domElement) {
         if (mountRef.current.contains(renderer.domElement)) {
-            mountRef.current.removeChild(renderer.domElement);
+          mountRef.current.removeChild(renderer.domElement);
         }
       }
       boxGeo.dispose();
