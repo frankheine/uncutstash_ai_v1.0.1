@@ -13,10 +13,10 @@ export interface ModelPair {
     description?: string;
 }
 
-export const MODEL_CATALOG: ModelPair[] = [
+export const getModelCatalog = (f16Supported: boolean): ModelPair[] => [
     {
         displayName: "Llama 3.2 1B (Instruct)",
-        targetModel: "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+        targetModel: `Llama-3.2-1B-Instruct-q4f${f16Supported ? '16' : '32'}_1-MLC`,
         draftModel: null
     },
     {
@@ -31,9 +31,9 @@ export const MODEL_CATALOG: ModelPair[] = [
     }
 ];
 
-export const AVAILABLE_TARGETS = [
-    "Llama-3.2-1B-Instruct-q4f16_1-MLC",
-    "Llama-3.2-3B-Instruct-q4f16_1-MLC",
+export const getAvailableTargets = (f16Supported: boolean) => [
+    `Llama-3.2-1B-Instruct-q4f${f16Supported ? '16' : '32'}_1-MLC`,
+    `Llama-3.2-3B-Instruct-q4f${f16Supported ? '16' : '32'}_1-MLC`,
     "SNOWflake_v1.2_UNCUTstash-1B",
     "SNOWflake_v1.2_UNCUTstash-3B",
 ];
@@ -46,18 +46,35 @@ interface ModelSelectorProps {
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isBooting, execMode }) => {
     const [isDevMode, setIsDevMode] = useState(false);
+    const [f16Supported, setF16Supported] = useState(false);
 
     // Normal Mode State
     const [selectedPairIndex, setSelectedPairIndex] = useState(0);
     const [edgeTargetModel, setEdgeTargetModel] = useState("");
 
     // Dev Mode State
-    const [devTarget, setDevTarget] = useState(AVAILABLE_TARGETS[0]);
-    const [devDraft, setDevDraft] = useState<string | null>(AVAILABLE_TARGETS[2]);
+    const [devTarget, setDevTarget] = useState(getAvailableTargets(false)[0]);
+    const [devDraft, setDevDraft] = useState<string | null>(getAvailableTargets(false)[2]);
     const [useDraft, setUseDraft] = useState(true);
 
     const [isOpen, setIsOpen] = useState(false);
     const [edgeModels, setEdgeModels] = useState<any[]>([]);
+
+    useEffect(() => {
+        const detectHardware = async () => {
+            if (navigator.gpu) {
+                try {
+                    const adapter = await navigator.gpu.requestAdapter();
+                    if (adapter && adapter.features.has('shader-f16')) {
+                        setF16Supported(true);
+                        setDevTarget(getAvailableTargets(true)[0]);
+                        setDevDraft(getAvailableTargets(true)[2]);
+                    }
+                } catch (e) {}
+            }
+        };
+        detectHardware();
+    }, []);
 
     useEffect(() => {
         if (execMode === 'edge') {
@@ -78,19 +95,21 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
                 onModelChange(edgeTargetModel, null);
             }
         } else {
-            const pair = MODEL_CATALOG[selectedPairIndex];
+            const catalog = getModelCatalog(f16Supported);
+            const pair = catalog[selectedPairIndex];
             onModelChange(pair.targetModel, pair.draftModel);
         }
-    }, [isDevMode, selectedPairIndex, devTarget, devDraft, useDraft, execMode, edgeTargetModel]);
+    }, [isDevMode, selectedPairIndex, devTarget, devDraft, useDraft, execMode, edgeTargetModel, f16Supported]);
 
     const getDisplayName = (targetModelId: string) => {
-        const found = MODEL_CATALOG.find(m => m.targetModel === targetModelId);
+        const catalog = getModelCatalog(f16Supported);
+        const found = catalog.find(m => m.targetModel === targetModelId);
         return found ? found.displayName : targetModelId;
     };
 
     const activeLabel = execMode === 'edge'
         ? (edgeTargetModel ? getDisplayName(edgeTargetModel) : "Loading Edge Models...")
-        : MODEL_CATALOG[selectedPairIndex].displayName;
+        : getModelCatalog(f16Supported)[selectedPairIndex].displayName;
 
     return (
         <div className="relative z-50 flex flex-col items-end">
@@ -138,7 +157,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
                                     className="absolute top-full right-0 mt-2 w-80 max-h-[60vh] overflow-y-auto p-2 rounded-xl backdrop-blur-xl border border-white/10 bg-black/80 shadow-2xl overflow-hidden origin-top-right custom-scrollbar"
                                 >
                                     {execMode === 'local' ? (
-                                        MODEL_CATALOG.map((pair, idx) => (
+                                        getModelCatalog(f16Supported).map((pair, idx) => (
                                             <button
                                                 key={idx}
                                                 onClick={() => {
@@ -214,9 +233,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
                                 value={devTarget}
                                 onChange={(e) => setDevTarget(e.target.value)}
                                 disabled={isBooting}
-                                className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 outline-none transition-colors"
+                                className={`w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/90 focus:outline-none focus:border-purple-500/50 transition-colors ${isBooting ? 'opacity-50 cursor-not-allowed' : ''
+                                    }`}
                             >
-                                {AVAILABLE_TARGETS.map(t => <option key={t} value={t}>{t}</option>)}
+                                {getAvailableTargets(f16Supported).map((t) => (
+                                    <option key={t} value={t} className="bg-zinc-900">{t}</option>
+                                ))}
                             </select>
                         </div>
 
@@ -245,9 +267,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
                                         value={devDraft || ''}
                                         onChange={(e) => setDevDraft(e.target.value)}
                                         disabled={isBooting}
-                                        className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-purple-500 outline-none transition-colors"
+                                        className={`w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/90 focus:outline-none focus:border-purple-500/50 transition-colors ${isBooting ? 'opacity-50 cursor-not-allowed' : ''
+                                            }`}
                                     >
-                                        {AVAILABLE_TARGETS.map(t => <option key={t} value={t}>{t}</option>)}
+                                        {getAvailableTargets(f16Supported).map((t) => (
+                                            <option key={t} value={t} className="bg-zinc-900">{t}</option>
+                                        ))}
                                     </select>
                                 </motion.div>
                             )}
