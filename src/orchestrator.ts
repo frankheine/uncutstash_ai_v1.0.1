@@ -92,9 +92,9 @@ async function generateNode(state: typeof GraphState.State) {
         });
 
         return { answer: response.text };
-    } catch (error) {
+    } catch (error: any) {
         console.error("Worker Execution Failed:", error);
-        throw error;
+        return { answer: `System error: ${error.message || error}` };
     }
 }
 

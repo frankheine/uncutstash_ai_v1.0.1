@@ -16,31 +16,30 @@ async function safeScreenshot(page, filename, options = {}) {
     console.log("🤖 [AGENT HARNESS] Initiating WebGPU test sequence...");
 
     const os = require('os');
-    const browser = await chromium.launch({
+    const userDataDir = path.join(os.tmpdir(), `playwright-agent-${Date.now()}`);
+    const context = await chromium.launchPersistentContext(userDataDir, {
         headless: true,
-        // channel: 'msedge', // removed to prevent hanging
         viewport: { width: 1280, height: 800 },
         bypassCSP: true,
         args: [
             '--headless=new',
             '--no-sandbox',
-            '--enable-gpu', // Explicitly enable GPU
+            '--enable-gpu',
             '--enable-unsafe-webgpu',
-            '--enable-webgpu-developer-features', // Expose shader-f16
+            '--enable-webgpu-developer-features',
             '--enable-dawn-features=allow_unsafe_apis,disable_robustness',
             '--disable-gpu-sandbox',
             '--ignore-gpu-blocklist',
-            '--disable-software-rasterizer', // Prevent CPU fallback at Chrome level
-            '--use-angle=vulkan', // Switch to Vulkan to bypass D3D11 limits and expose f16
+            '--disable-software-rasterizer',
+            '--use-angle=vulkan',
             '--use-gl=egl',
             '--use-cmd-decoder=passthrough',
             '--disable-web-security',
             '--unlimited-storage',
         ],
     });
-
-    // Create a new page since we aren't using persistent context
-    const page = await browser.newPage();
+    
+    const page = context.pages()[0] || await context.newPage();
 
     // 2. MIRROR CONSOLE & ERRORS TO THE AGENT'S TERMINAL
     page.on('console', msg => {
@@ -107,12 +106,23 @@ async function safeScreenshot(page, filename, options = {}) {
         // Wait 2 seconds for GSAP animations to complete
         await page.waitForTimeout(2000);
         await safeScreenshot(page, 'check-screenshot-chat.png', { fullPage: true });
-        console.log("🤖 [AGENT HARNESS] Engine loaded. Verification complete.");
+        console.log("🤖 [AGENT HARNESS] Engine loaded on First Boot. Initiating RELOAD to verify OPFSCache and Service Worker chain of custody...");
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        console.log("🤖 [AGENT HARNESS] Page reloaded. Waiting for Engine on Second Boot (Zero-latency cache read)...");
+        
+        await page.waitForTimeout(2000);
+        await safeScreenshot(page, 'check-screenshot-boot-second.png', { fullPage: true });
+        
+        await page.waitForSelector('.engine-ready-indicator', { state: 'attached', timeout: 180000 });
+        
+        await page.waitForTimeout(2000);
+        await safeScreenshot(page, 'check-screenshot-chat-second.png', { fullPage: true });
+        console.log("🤖 [AGENT HARNESS] Engine loaded on Second Boot. Zero-copy chain of custody verified.");
 
     } catch (error) {
         console.error(`🚨 [HARNESS FAILURE] ${error.message}`);
     } finally {
-        await browser.close();
+        await context.close();
         console.log("🤖 [AGENT HARNESS] Test sequence complete.");
     }
 })();

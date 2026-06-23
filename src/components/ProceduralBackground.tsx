@@ -155,6 +155,7 @@ function buildLayer(cfg: LayerConfig) {
 export default function ProceduralBackground({ slowMode = false, variant = 2 }: { slowMode?: boolean, variant?: number }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [motionEnabled, setMotionEnabled] = useState(true);
+  const [webGlFailed, setWebGlFailed] = useState(false);
   const motionRef = useRef(motionEnabled);
 
   useEffect(() => {
@@ -190,6 +191,7 @@ export default function ProceduralBackground({ slowMode = false, variant = 2 }: 
       mountRef.current.appendChild(renderer.domElement);
     } catch (err) {
       console.warn("WebGL not supported, falling back to static background.", err);
+      setWebGlFailed(true);
       return;
     }
 
@@ -286,6 +288,15 @@ export default function ProceduralBackground({ slowMode = false, variant = 2 }: 
       renderer.dispose();
     };
   }, [variant]);
+
+  if (webGlFailed) {
+    return (
+      <div className="fixed inset-0 z-[-2] bg-gradient-to-br from-[#0f172a] to-[#1e3a8a] overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 opacity-30 mix-blend-screen bg-[radial-gradient(circle_at_50%_50%,rgba(139,92,246,0.5),transparent_50%)] animate-pulse" />
+        <div className="absolute inset-0 opacity-20 mix-blend-screen bg-[radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.6),transparent_40%)]" style={{ animation: "pulse 4s infinite alternate" }} />
+      </div>
+    );
+  }
 
   return (
     <>

@@ -2,8 +2,9 @@
 // ============================================================================
 // SOVEREIGN RAG PIPELINE — FIXED BOOTSTRAP WITH GPU→CPU FALLBACK
 // ============================================================================
-import { CreateWebWorkerMLCEngine, prebuiltAppConfig, AppConfig, ModelRecord, MLCEngine, InitProgressReport, MLCEngineConfig } from "@mlc-ai/web-llm";
 
+// after
+import { CreateWebWorkerMLCEngine, prebuiltAppConfig, AppConfig, ModelRecord, MLCEngine, InitProgressReport, MLCEngineConfig, modelLibURLPrefix, modelVersion } from "@mlc-ai/web-llm";
 export interface ExtendedModelRecord extends ModelRecord {
     model_url?: string;
     model_lib_url?: string;
@@ -15,7 +16,7 @@ export type WorkerType = 'embed' | 'retrieve' | 'rerank' | 'inference';
 export type ExecutionMode = 'local' | 'edge';
 
 // DEFAULT TO EDGE: CDN-resolved WASMs work out of the box without local files
-export let currentExecutionMode: ExecutionMode = 'edge'; // Set to edge by default to match UI
+export let currentExecutionMode: ExecutionMode = 'local'; // Set to local by default to match strict offline architecture
 
 export function setExecutionMode(mode: ExecutionMode) {
     currentExecutionMode = mode;
@@ -24,31 +25,47 @@ export function setExecutionMode(mode: ExecutionMode) {
 
 const customModels: ExtendedModelRecord[] = [
     {
-        model: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f32_1-MLC/resolve/main/",
-        model_url: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f32_1-MLC/resolve/main/",
+        model: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f32_1-MLC/",
+        model_url: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f32_1-MLC/",
         model_id: "Llama-3.2-1B-Instruct-q4f32_1-MLC",
-        model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-1B-Instruct/Llama-3.2-1B-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm",
-        model_lib_url: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-1B-Instruct/Llama-3.2-1B-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm",
+        model_lib: modelLibURLPrefix + modelVersion + "/Llama-3.2-1B-Instruct-q4f32_1_cs1k-webgpu.wasm",
+        model_lib_url: modelLibURLPrefix + modelVersion + "/Llama-3.2-1B-Instruct-q4f32_1_cs1k-webgpu.wasm",
         vram_required_MB: 1500,
-        low_resource_required: true,
+        low_resource_required: false,
     },
     {
-        model: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f16_1-MLC/resolve/main/",
-        model_url: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f16_1-MLC/resolve/main/",
-        model_id: "Llama-3.2-1B-Instruct-q4f16_1-MLC",
-        model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-1B-Instruct/Llama-3.2-1B-Instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm",
-        model_lib_url: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-1B-Instruct/Llama-3.2-1B-Instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm",
+        model: "/models/Llama-3.2-1B-Instruct-abliterated-q4f16_1-MLC",
+        model_url: "/models/Llama-3.2-1B-Instruct-abliterated-q4f16_1-MLC",
+        model_id: "Llama-3.2-1B-Instruct-abliterated-q4f16_1-MLC",
+        model_lib: modelLibURLPrefix + modelVersion + "/Llama-3.2-1B-Instruct-q4f16_1_cs1k-webgpu.wasm",
+        model_lib_url: modelLibURLPrefix + modelVersion + "/Llama-3.2-1B-Instruct-q4f16_1_cs1k-webgpu.wasm",
         vram_required_MB: 1500,
+        low_resource_required: false,
+    },
+    {
+        model: "https://huggingface.co/mlc-ai/Llama-3.2-3B-Instruct-q4f32_1-MLC/",
+        model_url: "https://huggingface.co/mlc-ai/Llama-3.2-3B-Instruct-q4f32_1-MLC/",
+        model_id: "Llama-3.2-3B-Instruct-q4f32_1-MLC",
+        model_lib: modelLibURLPrefix + modelVersion + "/Llama-3.2-1B-Instruct-q4f32_1_cs1k-webgpu.wasm",
+        vram_required_MB: 2500,
         low_resource_required: false,
     },
     {
         model: "/models/SNOWflake_v1.2_UNCUTstash-1B",
         model_url: "/models/SNOWflake_v1.2_UNCUTstash-1B",
         model_id: "SNOWflake_v1.2_UNCUTstash-1B",
-        model_lib: "/wasm/SNOWflake_v1.2_UNCUTstash-1B-webgpu.wasm",
-        model_lib_url: "/wasm/SNOWflake_v1.2_UNCUTstash-1B-webgpu.wasm",
+        model_lib: "/wasm/SNOWflake_v1.0.wasm",
         vram_required_MB: 1024,
         low_resource_required: true,
+    },
+    {
+        model: "/models/SNOWflake_v1.2_UNCUTstash-3B",
+        model_url: "/models/SNOWflake_v1.2_UNCUTstash-3B",
+        model_id: "SNOWflake_v1.2_UNCUTstash-3B",
+        model_lib: "/wasm/SNOWflake_v1.0.wasm",
+        model_lib_url: "/wasm/SNOWflake_v1.0.wasm",
+        vram_required_MB: 2048,
+        low_resource_required: false,
     }
 ];
 
@@ -138,6 +155,21 @@ export async function bootstrapSpeculativePipeline(
                 if (contentType && contentType.includes('text/html')) {
                     throw new Error(`Unexpected token < Error prevented. Model directory not found. Server intercepted with index.html.`);
                 }
+
+                // Strictly verify WASM library exists, especially crucial for local mode
+                let targetWasmUrl = targetModelConfig.model_lib || targetModelConfig.model_lib_url;
+                if (!targetWasmUrl && currentExecutionMode === 'local') {
+                    targetWasmUrl = `/wasm/${targetModel}-webgpu.wasm`;
+                }
+                if (targetWasmUrl) {
+                    const wasmCheck = await fetch(targetWasmUrl, { method: 'HEAD' });
+                    if (!wasmCheck.ok) {
+                        throw new Error(`WASM execution binary missing: ${targetWasmUrl}. Please verify the file exists.`);
+                    }
+                    if (wasmCheck.headers.get('content-type')?.includes('text/html')) {
+                        throw new Error(`WASM missing: Server intercepted with index.html at ${targetWasmUrl}`);
+                    }
+                }
             } catch (validationErr: unknown) {
                 console.error("[Pipeline] Pre-validation failed:", validationErr);
                 throw new Error(`Model validation failed: ${(validationErr as Error).message}`, { cause: validationErr });
@@ -170,12 +202,25 @@ export async function bootstrapSpeculativePipeline(
             const appConfig: AppConfig = {
                 ...prebuiltAppConfig,
                 model_list: [
-                    ...customModels as ModelRecord[],
+                    ...customModels.map(model => {
+                        const baseModel = { ...model };
+                        if (baseModel.model_url && baseModel.model_url.startsWith('/')) {
+                            baseModel.model_url = new URL(baseModel.model_url, self.location.origin).href;
+                        }
+                        if (baseModel.model_lib_url && baseModel.model_lib_url.startsWith('/')) {
+                            baseModel.model_lib_url = new URL(baseModel.model_lib_url, self.location.origin).href;
+                        }
+                        if (baseModel.model && baseModel.model.startsWith('/')) {
+                            baseModel.model = new URL(baseModel.model, self.location.origin).href;
+                        }
+                        return baseModel as ModelRecord;
+                    }),
                     ...prebuiltAppConfig.model_list.map(model => {
                         const baseModel = { ...model };
-                        (baseModel as ExtendedModelRecord).model_url = (model as ExtendedModelRecord).model_url || `https://huggingface.co/mlc-ai/${model.model_id}/resolve/main/`;
-                        baseModel.model_lib = `/wasm/${model.model_id}-webgpu.wasm`;
-                        (baseModel as ExtendedModelRecord).model_lib_url = `/wasm/${model.model_id}-webgpu.wasm`;
+                        // Remove /resolve/main/ suffix since WebLLM natively resolves paths
+                        (baseModel as ExtendedModelRecord).model_url = (model as ExtendedModelRecord).model_url || `https://huggingface.co/mlc-ai/${model.model_id}`;
+                        baseModel.model_lib = new URL(`/wasm/${model.model_id}-webgpu.wasm`, self.location.origin).href;
+                        (baseModel as ExtendedModelRecord).model_lib_url = new URL(`/wasm/${model.model_id}-webgpu.wasm`, self.location.origin).href;
                         return baseModel as ModelRecord;
                     })
                 ]
@@ -192,6 +237,16 @@ export async function bootstrapSpeculativePipeline(
             targetModel,
             configOpts
         )) as unknown as MLCEngine;
+
+        progressCallback("Warming up embedding engine...");
+        try {
+            await runWorker('embed', { action: 'WAKEUP' }, (msg) => {
+                if (typeof msg === 'string') progressCallback(msg);
+                else if ((msg as any).log) progressCallback((msg as any).log);
+            });
+        } catch (warmupErr) {
+            console.warn("[Pipeline] Warmup error, but proceeding:", warmupErr);
+        }
 
         progressCallback("✅ WebGPU engine online — sovereign intelligence active.");
         return currentEngine;
@@ -314,11 +369,14 @@ export function runWorker<T>(
             return;
         }
 
+        const channel = new MessageChannel();
+
         const handleResponse = (e: MessageEvent) => {
             if (e.data.taskId === taskId) {
                 if (e.data.status === 'success') {
                     clearTimeout(timeoutId);
-                    worker.removeEventListener('message', handleResponse);
+                    channel.port1.removeEventListener('message', handleResponse);
+                    channel.port1.close();
                     resolve(e.data as T);
                 } else if (e.data.status === 'log' && onProgress) {
                     onProgress(e.data.message);
@@ -326,13 +384,16 @@ export function runWorker<T>(
                     onProgress(e.data);
                 } else if (e.data.status === 'error') {
                     clearTimeout(timeoutId);
-                    worker.removeEventListener('message', handleResponse);
+                    channel.port1.removeEventListener('message', handleResponse);
+                    channel.port1.close();
                     reject(new Error(e.data.message));
                 }
             }
         };
 
-        worker.addEventListener('message', handleResponse);
-        worker.postMessage({ taskId, ...payload });
+        channel.port1.addEventListener('message', handleResponse);
+        channel.port1.start();
+
+        worker.postMessage({ taskId, ...payload }, [channel.port2]);
     });
 }

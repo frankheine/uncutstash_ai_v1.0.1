@@ -28,7 +28,7 @@ export default function App() {
     const [engineReady, setEngineReady] = useState(false);
     const [isBooting, setIsBooting] = useState(false);
     const [useZeroCopy, setUseZeroCopy] = useState(false);
-    const [targetModel, setTargetModel] = useState("Llama-3.2-1B-Instruct-q4f32_1-MLC");
+    const [targetModel, setTargetModel] = useState("SNOWflake_v1.2_UNCUTstash-1B");
     const [draftModel, setDraftModel] = useState<string | null>(null);
     const [borderStyle, setBorderStyle] = useState(2); // Option 2 Default
     const [cubeVariant, setCubeVariant] = useState(1); // Cube variation state
@@ -116,7 +116,7 @@ Private Intelligence Engine...`);
         return () => {
             // Intentionally not resetting bootLockRef to prevent React StrictMode double-booting
         };
-    }, [targetModel, draftModel, useZeroCopy]);
+    }, [targetModel, draftModel, useZeroCopy, execMode]);
 
     useEffect(() => {
         if (engineReady && chatPanelRef.current) {
@@ -277,6 +277,7 @@ Private Intelligence Engine...`);
                             <button
                                 onClick={() => {
                                     const newMode = execMode === 'local' ? 'edge' : 'local';
+                                    bootLockRef.current = false;
                                     setExecMode(newMode);
                                     import('./rag/pipeline').then(m => m.setExecutionMode(newMode));
                                 }}
@@ -292,6 +293,7 @@ Private Intelligence Engine...`);
                             isBooting={isBooting}
                             execMode={execMode}
                             onModelChange={(target, draft) => {
+                                bootLockRef.current = false;
                                 setTargetModel(target);
                                 setDraftModel(draft);
                             }}
@@ -386,7 +388,11 @@ Private Intelligence Engine...`);
                                 <ModelSelector
                                     execMode={execMode}
                                     isBooting={isBooting}
-                                    onModelChange={(t, d) => { setTargetModel(t); setDraftModel(d); }}
+                                    onModelChange={(t, d) => {
+                                        bootLockRef.current = false;
+                                        setTargetModel(t);
+                                        setDraftModel(d);
+                                    }}
                                 />
                                 <button
                                     onClick={() => setScrollMode(prev => prev === 'container' ? 'page' : 'container')}

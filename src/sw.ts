@@ -36,10 +36,14 @@ const OPFSCache = {
             if (chunks.length > 0) {
                 // Browsers natively stream File/Blob objects directly from disk
                 // without loading the entire payload into the V8/JSC JS memory heap!
-                const combinedBlob = new Blob(chunks, { type: 'application/octet-stream' });
+                let mimeType = 'application/octet-stream';
+                if (request.url.endsWith('.wasm')) {
+                    mimeType = 'application/wasm';
+                }
+                const combinedBlob = new Blob(chunks, { type: mimeType });
                 return new Response(combinedBlob, {
                     headers: {
-                        "content-type": "application/octet-stream",
+                        "content-type": mimeType,
                         "content-length": combinedBlob.size.toString()
                     }
                 });
@@ -144,7 +148,7 @@ self.addEventListener("fetch", (event: any) => {
                     const isLocal = urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1' || urlObj.hostname === self.location.hostname;
 
                     if (!isLocal) {
-                        const allowedDomains = ['huggingface.co', 'cdn.jsdelivr.net', 'raw.githubusercontent.com'];
+                        const allowedDomains = ['huggingface.co', 'cdn.jsdelivr.net', 'githubusercontent.com'];
                         const isAllowedDomain = allowedDomains.some(domain => urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain));
 
                         if (!isAllowedDomain) {

@@ -9,18 +9,25 @@ const MODELS = [
     {
         // FIX: The script needs the relative directory name to append to BASE_DIR
         // NOT the localhost URL. The filesystem cannot read "http://localhost..."
-        dir: "SNOWflake_v1.2_UNCUTstash-1B",
-        // FIX: Added missing comma
-        wasmUrl: "http://localhost:5173/wasm/FISHscale_v1.0.wasm",
-        wasmFile: "FISHscale_v1.0.wasm"
-    }
-    /*
+        dir: "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+        wasmUrl: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v0_2_84/base/Llama-3.2-1B-Instruct-q4f16_1_cs1k-webgpu.wasm",
+        wasmFile: "Llama-3.2-1B-Instruct-q4f16_1_cs1k-webgpu.wasm"
+    },
+    {
+        dir: "Llama-3.2-3B-Instruct-q4f16_1-MLC",
+        wasmUrl: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v0_2_84/base/Llama-3.2-3B-Instruct-q4f16_1_cs1k-webgpu.wasm",
+        wasmFile: "Llama-3.2-3B-Instruct-q4f16_1_cs1k-webgpu.wasm"
+    },
     {
         dir: "SNOWflake_v1.2_UNCUTstash-3B",
-        wasmUrl: "http://localhost:5173/wasm/SNOWflake_v1.0.wasm",
+        wasmUrl: "/wasm/SNOWflake_v1.0.wasm",
+        wasmFile: "SNOWflake_v1.0.wasm"
+    },
+    {
+        dir: "SNOWflake_v1.2_UNCUTstash-1B",
+        wasmUrl: "/wasm/SNOWflake_v1.0.wasm",
         wasmFile: "SNOWflake_v1.0.wasm"
     }
-    */
 ];
 
 const BASE_DIR = path.resolve(__dirname, '../public/models');

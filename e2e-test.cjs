@@ -48,9 +48,12 @@ const { chromium } = require('playwright');
     let lastText = '';
     let stableCount = 0;
     const deadline = Date.now() + 600_000; // 10 min
+    let screenshotCounter = 1;
 
     while (Date.now() < deadline) {
-        await page.waitForTimeout(1500);
+        await page.screenshot({ path: `e2e-stream-${String(screenshotCounter).padStart(3, '0')}.png`, fullPage: false });
+        screenshotCounter++;
+        await page.waitForTimeout(300);
 
         // Grab text from any element that looks like an assistant reply
         const text = await page.evaluate(() => {
@@ -77,7 +80,8 @@ const { chromium } = require('playwright');
             stableCount = 0;
         } else if (text && text === lastText) {
             stableCount++;
-            if (stableCount >= 4) break; // stable for 6 seconds = done
+            // Since we wait 300ms now, 20 iterations = 6 seconds
+            if (stableCount >= 20) break; 
         }
 
         lastText = text;
