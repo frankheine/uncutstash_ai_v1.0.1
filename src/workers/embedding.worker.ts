@@ -16,9 +16,33 @@ let initPromise: Promise<any> | null = null;
 
 // Use standard self.onmessage syntax to match your existing pattern perfectly
 self.onmessage = async (event: MessageEvent) => {
-    const { text, taskId } = event.data;
+    const { text, taskId, action } = event.data;
+    const replyPort = event.ports[0] || self;
 
     try {
+        // Initialize pipeline on warmup without running inference
+        if (action === 'WAKEUP' || text === undefined || text === null) {
+            if (!extractor) {
+                if (!initPromise) {
+                    initPromise = pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+                        device: 'wasm',
+                        quantized: true,
+                        progress_callback: (data: any) => {
+                            if (data.status === 'progress' && typeof data.progress === 'number') {
+                                replyPort.postMessage({ taskId, status: 'progress', log: `Loading Embedding Weights: ${Math.round(data.progress)}%` });
+                            } else {
+                                replyPort.postMessage({ taskId, status: 'progress', log: `Loading Embedding Weights: ${data.status || 'Downloading'}...` });
+                            }
+                        }
+                    } as any);
+                }
+                extractor = await initPromise;
+            }
+            // Warmup successful — return empty embedding
+            replyPort.postMessage({ taskId, status: 'success', embedding: [] });
+            return;
+        }
+
         if (!extractor) {
             if (!initPromise) {
                 // It looks for: /models/Xenova/all-MiniLM-L6-v2/config.json
@@ -30,9 +54,9 @@ self.onmessage = async (event: MessageEvent) => {
                     quantized: true,
                     progress_callback: (data: any) => {
                         if (data.status === 'progress' && typeof data.progress === 'number') {
-                            self.postMessage({ taskId, status: 'progress', log: `Loading Embedding Weights: ${Math.round(data.progress)}%` });
+                            replyPort.postMessage({ taskId, status: 'progress', log: `Loading Embedding Weights: ${Math.round(data.progress)}%` });
                         } else {
-                            self.postMessage({ taskId, status: 'progress', log: `Loading Embedding Weights: ${data.status || 'Downloading'}...` });
+                            replyPort.postMessage({ taskId, status: 'progress', log: `Loading Embedding Weights: ${data.status || 'Downloading'}...` });
                         }
                     }
                 } as any); // 👈 Added 'as any' to bypass strict model option validation
@@ -40,14 +64,19 @@ self.onmessage = async (event: MessageEvent) => {
             extractor = await initPromise;
         }
 
+        if (action === 'WAKEUP') {
+            replyPort.postMessage({ taskId, status: 'success', embedding: [] });
+            return;
+        }
+
         const output = await extractor(text, { pooling: 'mean', normalize: true });
         const embedding = Array.from(output.data);
 
-        self.postMessage({ taskId, status: 'success', embedding });
+        replyPort.postMessage({ taskId, status: 'success', embedding });
     } catch (error: any) {
         console.error("[Embedding Worker Error]:", error);
         // Crucial for debugging local file-loading issues
-        self.postMessage({ taskId, status: 'error', message: `Worker error: ${error.message}` });
+        replyPort.postMessage({ taskId, status: 'error', message: `Worker error: ${error.message}` });
         initPromise = null;
     }
 };

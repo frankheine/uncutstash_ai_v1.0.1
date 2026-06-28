@@ -6,12 +6,15 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
-
+public/
+.gemini
 node_modules
 dist
 dist-ssr
 *.local
+check-screenshot-boot.png
+check-screenshot-chat.png
+check-screenshot-failed.png
 
 # Editor directories and files
 .vscode/*
@@ -22,11 +25,15 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
+timeline_artifacts
+codebase*
 *.sw?
-public/*
-.agents/rules/uncutstash-si.md
 
+.agents/rules/uncutstash-si.md
+.playwright*
 check-screenshot.png
+scripts*
+
 .playwright_cache
 agent_checkpoint*.png
 uncutstash_ai_v1.0.1/

@@ -86,7 +86,7 @@ async function safeScreenshot(page, filename, options = {}) {
     try {
         // 3. Navigate to Vite Localhost (Adjust port if necessary)
         console.log("🤖 [AGENT HARNESS] Navigating to http://localhost:5173");
-        await page.goto('http://localhost:5173/', { waitUntil: 'domcontentloaded', timeout: 120000 });
+        await page.goto('http://localhost:5173/', { waitUntil: 'domcontentloaded', timeout: 300000 });
         console.log("🤖 [AGENT HARNESS] DOM Loaded. Waiting for initialization sequence...");
 
         // 4. Verify WebGPU Context

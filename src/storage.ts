@@ -56,3 +56,41 @@ export async function syncToColdStore(plaintextData: any, networkWorker: Worker)
     const ciphertextBuffer = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
     networkWorker.postMessage({ ciphertext: ciphertextBuffer, iv });
 }
+
+// ============================================================================
+// AUTONOMOUS MIGRATION (LRU & DECAY)
+// ============================================================================
+
+export const warmStore = localforage.createInstance({
+    name: "SovereignRAG",
+    storeName: "warm_pointers"
+});
+
+export const coldManifest = localforage.createInstance({
+    name: "SovereignRAG",
+    storeName: "cold_manifest"
+});
+
+export async function runDataLifecycleManager() {
+    const DECAY_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 Days
+    const now = Date.now();
+    const keysToMigrate: string[] = [];
+
+    // Scan the hot cache for stale memories
+    await hotStore.iterate((value: any, key: string) => {
+        // If the memory has a lastAccessed timestamp and it's older than 7 days
+        if (value && value.lastAccessed && (now - value.lastAccessed > DECAY_THRESHOLD_MS)) {
+            keysToMigrate.push(key);
+        }
+    });
+
+    // Migrate stale memories to warm storage
+    for (const key of keysToMigrate) {
+        const memory = await hotStore.getItem<any>(key);
+        if (memory) {
+            await warmStore.setItem(key, { ...memory, status: 'archived' });
+            await hotStore.removeItem(key);
+            console.log(`[Lifecycle Manager] Migrated memory ${key} to Warm Storage.`);
+        }
+    }
+}

@@ -1,59 +1,134 @@
-/// <reference lib="webworker" />
+// src/storage.ts
+import localforage from 'localforage';
 
-export type StorageMessage = 
-    | { type: 'WRITE_SYNC'; filename: string; data: Uint8Array; offset?: number }
-    | { type: 'READ_SYNC'; filename: string; offset?: number; length?: number }
-    | { type: 'DELETE_FILE'; filename: string };
+export interface SovereignMetadata {
+    coreContext: {
+        intent: string;
+        sessionId: string;
+    };
+    interaction: {
+        latencyMs: number;
+        tokenUsage: number;
+        modelVersion: string;
+    };
+    userPrefs: {
+        priorityLevel: number;
+        formattingRules: string[];
+    };
+    environmental: {
+        deviceName: string;
+        location: string;
+        detectedMood: string;
+    };
+}
 
-self.onmessage = async (e: MessageEvent<StorageMessage>) => {
-    const root = await navigator.storage.getDirectory();
-    
-    switch (e.data.type) {
-        case 'WRITE_SYNC': {
-            const { filename, data, offset = 0 } = e.data;
-            // Wrap all OPFS write operations inside the Web Locks API
-            await navigator.locks.request(`opfs-write-lock-${filename}`, async () => {
-                const fileHandle = await root.getFileHandle(filename, { create: true });
-                // @ts-ignore - TypeScript sometimes misses the synchronous OPFS APIs in standard libs
-                const accessHandle = await fileHandle.createSyncAccessHandle();
-                try {
-                    accessHandle.write(data, { at: offset });
-                    accessHandle.flush();
-                } finally {
-                    accessHandle.close();
-                }
-            });
-            self.postMessage({ status: 'success', action: 'WRITE_SYNC', filename });
-            break;
+export interface SovereignMemory {
+    id: string;
+    timestamp: string; // ISO 8601
+    content: string;
+    category: string;
+    title: string;
+    summary: string;
+    tags: string[];
+    importance: number;
+    status: 'active' | 'archived' | 'draft';
+    links: string[];
+    metadata: SovereignMetadata;
+    lastAccessed: number; // Epoch ms for LRU Decay
+}
+
+export interface ColdStorageManifestEntry {
+    id: string;
+    iv: Uint8Array;
+    bucketUrl: string;
+    timestamp: number;
+}
+
+// 1. HOT TIER: IndexedDB for rapid, recent access
+export const hotStore = localforage.createInstance({
+    name: "SovereignRAG",
+    storeName: "hot_cache"
+});
+
+// 2. WARM TIER: OPFS Pointers
+export const warmStore = localforage.createInstance({
+    name: "SovereignRAG",
+    storeName: "warm_pointers"
+});
+
+// 3. COLD TIER: Encrypted Manifest
+export const coldManifest = localforage.createInstance({
+    name: "SovereignRAG",
+    storeName: "cold_manifest"
+});
+
+export async function saveMemory(memory: SovereignMemory) {
+    memory.lastAccessed = Date.now();
+    await hotStore.setItem(memory.id, memory);
+}
+
+export async function getMemory(id: string): Promise<SovereignMemory | null> {
+    const mem = await hotStore.getItem<SovereignMemory>(id);
+    if (mem) {
+        mem.lastAccessed = Date.now();
+        await hotStore.setItem(id, mem);
+        return mem;
+    }
+    return null;
+}
+
+// --- AUTONOMOUS MIGRATION (LRU & DECAY) ---
+export async function runDataLifecycleManager() {
+    const DECAY_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 Days
+    const now = Date.now();
+    const keysToMigrate: string[] = [];
+
+    await hotStore.iterate((value: SovereignMemory, key: string) => {
+        if (now - value.lastAccessed > DECAY_THRESHOLD_MS) {
+            keysToMigrate.push(key);
         }
+    });
 
-        case 'READ_SYNC': {
-            const { filename, offset = 0, length } = e.data;
-            // Reading doesn't strictly need a lock, but we can lock in 'shared' mode if we want.
-            // For now, we just lock exclusively to prevent reading while a write is occurring.
-            await navigator.locks.request(`opfs-write-lock-${filename}`, { mode: 'shared' }, async () => {
-                const fileHandle = await root.getFileHandle(filename);
-                // @ts-ignore
-                const accessHandle = await fileHandle.createSyncAccessHandle();
-                try {
-                    const size = length || accessHandle.getSize() - offset;
-                    const buffer = new Uint8Array(size);
-                    accessHandle.read(buffer, { at: offset });
-                    self.postMessage({ status: 'success', action: 'READ_SYNC', filename, data: buffer }, [buffer.buffer]);
-                } finally {
-                    accessHandle.close();
-                }
-            });
-            break;
-        }
-
-        case 'DELETE_FILE': {
-            const { filename } = e.data;
-            await navigator.locks.request(`opfs-write-lock-${filename}`, async () => {
-                await root.removeEntry(filename);
-            });
-            self.postMessage({ status: 'success', action: 'DELETE_FILE', filename });
-            break;
+    for (const key of keysToMigrate) {
+        const memory = await hotStore.getItem<SovereignMemory>(key);
+        if (memory) {
+            // Move to Warm Storage (OPFS logic handled by storage.worker.ts)
+            await warmStore.setItem(key, { ...memory, status: 'archived' });
+            await hotStore.removeItem(key);
+            console.log(`[Lifecycle Manager] Migrated memory ${key} to Warm Storage.`);
         }
     }
-};
+}
+
+// --- COLD STORAGE ENCRYPTION (WEB CRYPTO API) ---
+export async function encryptForColdStorage(plaintextData: any): Promise<{ ciphertext: ArrayBuffer, iv: Uint8Array, key: CryptoKey }> {
+    // Generate a secure AES-GCM key
+    const key = await crypto.subtle.generateKey(
+        { name: "AES-GCM", length: 256 },
+        true, // extractable (needed if you want to store the key in IndexedDB)
+        ["encrypt", "decrypt"]
+    );
+
+    // 12 bytes is the NIST recommended IV length for AES-GCM
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(JSON.stringify(plaintextData));
+
+    const ciphertext = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv },
+        key,
+        encoded
+    );
+
+    return { ciphertext, iv, key };
+}
+
+export async function decryptFromColdStorage(ciphertext: ArrayBuffer, iv: Uint8Array, key: CryptoKey): Promise<any> {
+    const decryptedBuffer = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv },
+        key,
+        ciphertext
+    );
+
+    const decoded = new TextDecoder().decode(decryptedBuffer);
+    return JSON.parse(decoded);
+}

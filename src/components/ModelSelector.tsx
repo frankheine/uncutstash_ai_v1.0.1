@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+// src/components/ModelSelector.tsx
+
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Settings2, ChevronDown, Check, Zap, Download } from 'lucide-react';
 import { getModelList } from '../rag/pipeline';
@@ -15,8 +17,26 @@ export interface ModelPair {
 
 export const getModelCatalog = (f16Supported: boolean): ModelPair[] => [
     {
+        displayName: f16Supported ? "Llama 3.2 1B (f16 - Recommended)" : "Llama 3.2 1B (f32 - Compatibility)",
+        targetModel: f16Supported
+            ? 'Llama-3.2-1B-Instruct-q4f16_1-MLC'
+            : 'Llama-3.2-1B-Instruct-q4f32_1-MLC',
+        draftModel: null
+    },
+    // keep the abliterated entry but move it down, label it local-only
+    {
+        displayName: "DeepSeek-R1-Distill-Qwen-1.5B-q4f16_1-MLC",
+        targetModel: `DeepSeek-R1-Distill-Qwen-1.5B-q4f16_1-MLC`,
+        draftModel: null
+    },
+    {
+        displayName: "Llama 3.2 1B (Abliterated)",
+        targetModel: `Llama-3.2-1B-Instruct-abliterated-q4f16_1-MLC`,
+        draftModel: null
+    },
+    {
         displayName: "Llama 3.2 1B (Instruct)",
-        targetModel: `Llama-3.2-1B-Instruct-q4f16_1-MLC`,
+        targetModel: `Llama-3.2-1B-Instruct-q4f32_1-MLC`,
         draftModel: null
     },
     {
@@ -31,12 +51,20 @@ export const getModelCatalog = (f16Supported: boolean): ModelPair[] => [
     }
 ];
 
-export const getAvailableTargets = (f16Supported: boolean) => [
-    `Llama-3.2-1B-Instruct-q4f16_1-MLC`,
-    `Llama-3.2-3B-Instruct-q4f16_1-MLC`,
-    "SNOWflake_v1.2_UNCUTstash-1B",
-    "SNOWflake_v1.2_UNCUTstash-3B",
-];
+export const getAvailableTargets = (f16Supported: boolean): string[] => {
+    const list = [
+        f16Supported
+            ? 'Llama-3.2-1B-Instruct-q4f16_1-MLC'
+            : 'Llama-3.2-1B-Instruct-q4f32_1-MLC',
+        'Llama-3.2-3B-Instruct-q4f32_1-MLC',
+        'SNOWflake_v1.2_UNCUTstash-1B',
+        'SNOWflake_v1.2_UNCUTstash-3B',
+    ];
+    if (f16Supported) {
+        list.splice(1, 0, 'Llama-3.2-1B-Instruct-abliterated-q4f16_1-MLC');
+    }
+    return list;
+};
 
 interface ModelSelectorProps {
     onModelChange: (target: string, draft: string | null) => void;
@@ -54,7 +82,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
 
     // Dev Mode State
     const [devTarget, setDevTarget] = useState(getAvailableTargets(false)[0]);
-    const [devDraft, setDevDraft] = useState<string | null>(getAvailableTargets(false)[2]);
+    const [devDraft, setDevDraft] = useState<string | null>(getAvailableTargets(false)[1]);
     const [useDraft, setUseDraft] = useState(true);
 
     const [isOpen, setIsOpen] = useState(false);
@@ -81,13 +109,25 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
             const list = getModelList();
             setEdgeModels(list);
             if (!edgeTargetModel && list.length > 0) {
-                setEdgeTargetModel(list[0].model_id);
+                const preferredId = f16Supported
+                    ? list.find(m => m.model_id.includes('q4f16'))?.model_id
+                    : list.find(m => m.model_id.includes('q4f32'))?.model_id;
+                setEdgeTargetModel(preferredId ?? list[0].model_id);
             }
         }
-    }, [execMode]);
+    }, [execMode, f16Supported]);   // ← add f16Supported so it reacts once detection resolves
 
-    // Apply changes when mode or selections change
+    // Apply changes when mode or selections change.
+    // Guard against firing on initial mount — App.tsx owns the initial model state.
+    // We still want to fire when f16Supported changes (hardware detection), when the
+    // user changes the dropdown, or when execMode changes.
+    const isInitialMountRef = useRef(true);
+
     useEffect(() => {
+        if (isInitialMountRef.current) {
+            isInitialMountRef.current = false;
+            return;
+        }
         if (isSpeculativeOverride) {
             onModelChange(devTarget, useDraft ? devDraft : null);
         } else if (execMode === 'edge') {
@@ -119,8 +159,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
                     <button
                         onClick={() => setIsSpeculativeOverride(!isSpeculativeOverride)}
                         className={`p-2 rounded-full backdrop-blur-md border transition-all duration-300 ${isSpeculativeOverride
-                                ? 'bg-purple-500/20 border-purple-500/50 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.4)]'
-                                : 'bg-black/40 border-white/10 text-white/50 hover:text-white/80'
+                            ? 'bg-purple-500/20 border-purple-500/50 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.4)]'
+                            : 'bg-black/40 border-white/10 text-white/50 hover:text-white/80'
                             }`}
                         title="Toggle Speculative Generation Override"
                     >
@@ -132,8 +172,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
                             onClick={() => !isBooting && !isSpeculativeOverride && setIsOpen(!isOpen)}
                             disabled={isBooting || isSpeculativeOverride}
                             className={`flex items-center gap-3 px-4 py-2.5 rounded-xl backdrop-blur-xl border border-white/10 bg-black/40 text-white/90 font-medium transition-all ${isBooting || isSpeculativeOverride
-                                    ? 'opacity-40 cursor-not-allowed'
-                                    : 'hover:bg-white/5 cursor-pointer hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]'
+                                ? 'opacity-40 cursor-not-allowed'
+                                : 'hover:bg-white/5 cursor-pointer hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]'
                                 }`}
                         >
                             <span className="flex items-center gap-2 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
@@ -160,8 +200,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
                                                     setIsOpen(false);
                                                 }}
                                                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors ${selectedPairIndex === idx
-                                                        ? 'bg-white/10 text-white'
-                                                        : 'text-white/60 hover:bg-white/5 hover:text-white/90'
+                                                    ? 'bg-white/10 text-white'
+                                                    : 'text-white/60 hover:bg-white/5 hover:text-white/90'
                                                     }`}
                                             >
                                                 {pair.displayName}

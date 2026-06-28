@@ -14,6 +14,7 @@ let initPromise: Promise<any> | null = null;
 
 self.onmessage = async (event: MessageEvent) => {
     const { query, candidates, taskId } = event.data;
+    const replyPort = event.ports[0] || self;
 
     try {
         if (!reranker) {
@@ -28,9 +29,9 @@ self.onmessage = async (event: MessageEvent) => {
                     dtype: 'q8',
                     progress_callback: (data: any) => {
                         if (data.status === 'progress' && typeof data.progress === 'number') {
-                            self.postMessage({ taskId, status: 'progress', log: `Loading Cross-Encoder Weights: ${Math.round(data.progress)}%` });
+                            replyPort.postMessage({ taskId, status: 'progress', log: `Loading Cross-Encoder Weights: ${Math.round(data.progress)}%` });
                         } else {
-                            self.postMessage({ taskId, status: 'progress', log: `Loading Cross-Encoder Weights: ${data.status || 'Downloading'}...` });
+                            replyPort.postMessage({ taskId, status: 'progress', log: `Loading Cross-Encoder Weights: ${data.status || 'Downloading'}...` });
                         }
                     }
                 } as any); // 👈 Added 'as any' to bypass strict model option validation
@@ -39,7 +40,7 @@ self.onmessage = async (event: MessageEvent) => {
         }
 
         // Notify the UI that cross-encoder reranking has started
-        self.postMessage({ taskId, status: 'progress', log: '🧠 Cross-encoder reranking candidates...' });
+        replyPort.postMessage({ taskId, status: 'progress', log: '🧠 Cross-encoder reranking candidates...' });
 
         const reranked: any[] = []; // 👈 Added explicit any[] type to prevent 'never' array inference
         for (const doc of candidates) {
@@ -52,14 +53,14 @@ self.onmessage = async (event: MessageEvent) => {
         reranked.sort((a: any, b: any) => b.rerankScore - a.rerankScore); // 👈 Added explicit types to parameters
 
         // Notify the UI that reranking is complete
-        self.postMessage({ taskId, status: 'progress', log: `✨ Reranked — top ${Math.min(5, reranked.length)} passages selected.` });
+        replyPort.postMessage({ taskId, status: 'progress', log: `✨ Reranked — top ${Math.min(5, reranked.length)} passages selected.` });
 
         // Return top 5 optimised matches; status:'success' required for runWorker to resolve
-        self.postMessage({ taskId, status: 'success', reranked: reranked.slice(0, 5) });
+        replyPort.postMessage({ taskId, status: 'success', reranked: reranked.slice(0, 5) });
     } catch (error: any) {
         console.error("[Rerank Worker Error]:", error);
         // status:'error' lets runWorker reject cleanly
-        self.postMessage({ taskId, status: 'error', message: error.message });
+        replyPort.postMessage({ taskId, status: 'error', message: error.message });
         initPromise = null;
     }
 };

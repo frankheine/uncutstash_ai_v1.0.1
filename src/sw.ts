@@ -1,20 +1,16 @@
 export type { }; // Forces TypeScript to treat this file as an isolated module
 declare const self: ServiceWorkerGlobalScope; // Maps the global 'self' keyword cleanly
 
-// 🛠️ Vite PWA / Workbox Manifest Injection Placeholder Token
-// The build pipeline looks for this exact string. Do not modify or delete this line.
 // @ts-ignore
 const precacheManifest = self.__WB_MANIFEST;
 
 const MODEL_CACHE_NAME = "uncutstash-ai-models-v1";
 
-// Helper to sanitize URL into a valid filename
 function getOPFSFilename(urlStr: string) {
     const url = new URL(urlStr);
     return url.pathname.replace(/[^a-zA-Z0-9.\-]/g, '_');
 }
 
-// Custom OPFS Interface for safely chunking large weights
 const OPFSCache = {
     async match(request: Request): Promise<Response | undefined> {
         try {
@@ -34,8 +30,6 @@ const OPFSCache = {
             }
 
             if (chunks.length > 0) {
-                // Browsers natively stream File/Blob objects directly from disk
-                // without loading the entire payload into the V8/JSC JS memory heap!
                 let mimeType = 'application/octet-stream';
                 if (request.url.endsWith('.wasm')) {
                     mimeType = 'application/wasm';
@@ -58,7 +52,6 @@ const OPFSCache = {
         const root = await navigator.storage.getDirectory();
         const filename = getOPFSFilename(request.url);
 
-        // Ensure no single JS memory buffer exceeds ~150MB (well below 256MB iOS limit)
         const CHUNK_LIMIT = 150 * 1024 * 1024;
         const reader = response.body!.getReader();
 
@@ -90,21 +83,13 @@ const OPFSCache = {
     async writeChunk(root: FileSystemDirectoryHandle, chunkName: string, bufferChunks: Uint8Array[]) {
         const handle = await root.getFileHandle(chunkName, { create: true });
         const blob = new Blob(bufferChunks as any);
-        // @ts-ignore - Handle cross-browser OPFS writable streams
-        if (handle.createWritable) {
-            // @ts-ignore
-            const writable = await handle.createWritable();
-            await writable.write(blob);
-            await writable.close();
-        } else {
-            // Safari worker fallback
-            // @ts-ignore
-            const accessHandle = await handle.createSyncAccessHandle();
-            const arrayBuf = await blob.arrayBuffer();
-            accessHandle.write(new Uint8Array(arrayBuf));
-            accessHandle.flush();
-            accessHandle.close();
-        }
+
+        // @ts-ignore
+        const accessHandle = await handle.createSyncAccessHandle();
+        const arrayBuf = await blob.arrayBuffer();
+        accessHandle.write(new Uint8Array(arrayBuf));
+        accessHandle.flush();
+        accessHandle.close();
     }
 };
 
@@ -116,34 +101,25 @@ self.addEventListener("activate", (event) => {
     event.waitUntil(self.clients.claim());
 });
 
-// Programmatic cache interception loop
 self.addEventListener("fetch", (event: any) => {
-    // CRITICAL FIX: Only intercept GET requests. 
-    // The Cache API (cache.put) will fatally crash if fed a HEAD or POST request.
     if (event.request.method !== 'GET') return;
 
     const url = new URL(event.request.url);
-
-    // Filter heavy weights vs standard JSON config files
     const isHeavyAsset = [".wasm", ".bin", ".onnx", ".gguf"].some(ext => url.pathname.endsWith(ext));
     const isLightAsset = [".json"].some(ext => url.pathname.endsWith(ext));
 
     if (isHeavyAsset || isLightAsset) {
         event.respondWith(
             (async () => {
-                // OPFS for heavy assets, standard Cache API for lightweight JSON configs
                 const cachedResponse = isHeavyAsset
                     ? await OPFSCache.match(event.request)
                     : await (await caches.open(MODEL_CACHE_NAME)).match(event.request);
 
-                // Cold-start validation: if asset is found locally, bypass network entirely
                 if (cachedResponse) {
                     return cachedResponse;
                 }
 
-                // Cache miss execution path: acquire via network connection and write to local disk
                 try {
-                    // ZERO-TRUST EDGE FIREWALL
                     const urlObj = new URL(event.request.url);
                     const isLocal = urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1' || urlObj.hostname === self.location.hostname;
 
@@ -161,10 +137,8 @@ self.addEventListener("fetch", (event: any) => {
 
                     if (networkResponse.status === 200) {
                         const contentType = networkResponse.headers.get("content-type");
-                        // Never cache the Vite SPA HTML fallback if a requested asset is missing
                         if (contentType && !contentType.includes("text/html")) {
                             if (isHeavyAsset) {
-                                // Background OPFS write
                                 OPFSCache.put(event.request, networkResponse.clone()).catch(console.error);
                             } else {
                                 const cache = await caches.open(MODEL_CACHE_NAME);

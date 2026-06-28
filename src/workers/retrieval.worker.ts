@@ -35,6 +35,7 @@ async function loadFromOPFS() {
 
 self.onmessage = async (event: MessageEvent) => {
     const { action, taskId } = event.data;
+    const replyPort = event.ports[0] || self;
 
     try {
         if (!db) {
@@ -57,7 +58,7 @@ self.onmessage = async (event: MessageEvent) => {
             const { text, embedding } = event.data;
             await insert(db, { text, embedding });
             await saveToOPFS(db);
-            self.postMessage({ taskId, status: 'success' });
+            replyPort.postMessage({ taskId, status: 'success' });
         }
 
         if (action === 'flush') {
@@ -69,13 +70,13 @@ self.onmessage = async (event: MessageEvent) => {
                 }
             });
             await saveToOPFS(db);
-            self.postMessage({ taskId, status: 'success' });
+            replyPort.postMessage({ taskId, status: 'success' });
         }
 
         if (action === 'search') {
             const { queryVector, queryText } = event.data;
 
-            self.postMessage({ taskId, status: 'progress', log: '🔍 Executing Orama Hybrid Search...' });
+            replyPort.postMessage({ taskId, status: 'progress', log: '🔍 Executing Orama Hybrid Search...' });
 
             try {
                 const results = await search(db, {
@@ -91,13 +92,13 @@ self.onmessage = async (event: MessageEvent) => {
                     score: hit.score
                 }));
 
-                self.postMessage({ taskId, status: 'success', candidates });
+                replyPort.postMessage({ taskId, status: 'success', candidates });
             } catch (searchError: any) {
                 console.log("[Orama Worker] Search failed (likely empty db):", searchError);
-                self.postMessage({ taskId, status: 'success', candidates: [] });
+                replyPort.postMessage({ taskId, status: 'success', candidates: [] });
             }
         }
     } catch (error: any) {
-        self.postMessage({ taskId, status: 'error', message: error.message });
+        replyPort.postMessage({ taskId, status: 'error', message: error.message });
     }
 };

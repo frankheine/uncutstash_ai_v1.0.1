@@ -3,8 +3,8 @@
 // SOVEREIGN RAG PIPELINE — FIXED BOOTSTRAP WITH GPU→CPU FALLBACK
 // ============================================================================
 
-// after
-import { CreateWebWorkerMLCEngine, prebuiltAppConfig, AppConfig, ModelRecord, MLCEngine, InitProgressReport, MLCEngineConfig, modelLibURLPrefix, modelVersion } from "@mlc-ai/web-llm";
+import { CreateWebWorkerMLCEngine, prebuiltAppConfig, AppConfig, ModelRecord, MLCEngine, InitProgressReport, MLCEngineConfig } from "@mlc-ai/web-llm";
+
 export interface ExtendedModelRecord extends ModelRecord {
     model_url?: string;
     model_lib_url?: string;
@@ -16,7 +16,7 @@ export type WorkerType = 'embed' | 'retrieve' | 'rerank' | 'inference';
 export type ExecutionMode = 'local' | 'edge';
 
 // DEFAULT TO EDGE: CDN-resolved WASMs work out of the box without local files
-export let currentExecutionMode: ExecutionMode = 'local'; // Set to local by default to match strict offline architecture
+export let currentExecutionMode: ExecutionMode = 'edge';
 
 export function setExecutionMode(mode: ExecutionMode) {
     currentExecutionMode = mode;
@@ -25,42 +25,76 @@ export function setExecutionMode(mode: ExecutionMode) {
 
 const customModels: ExtendedModelRecord[] = [
     {
-        model: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f32_1-MLC/",
-        model_url: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f32_1-MLC/",
-        model_id: "Llama-3.2-1B-Instruct-q4f32_1-MLC",
-        model_lib: modelLibURLPrefix + modelVersion + "/Llama-3.2-1B-Instruct-q4f32_1_cs1k-webgpu.wasm",
-        model_lib_url: modelLibURLPrefix + modelVersion + "/Llama-3.2-1B-Instruct-q4f32_1_cs1k-webgpu.wasm",
+        model: "/models/DeepSeek-R1-Distill-Qwen-1.5B-q4f16_1-MLC/",
+        model_url: "/models/DeepSeek-R1-Distill-Qwen-1.5B-q4f16_1-MLC/",
+        model_id: "DeepSeek-R1-Distill-Qwen-1.5B-q4f16_1-MLC",
+        model_lib: "/wasm/DeepSeek-R1-Distill-Qwen-1.5B-q4f16_1-MLC-webgpu.wasm",
+        vram_required_MB: 1024,
+        low_resource_required: true,
+    },
+    {
+        model: "/models/Qwen3-0.6B-abliterated-MLC-q4f16_1/",
+        model_url: "/models/Qwen3-0.6B-abliterated-MLC-q4f16_1/",
+        model_id: "Qwen3-0.6B-abliterated-MLC-q4f16_1",
+        model_lib: "/wasm/*****.wasm",
+        vram_required_MB: 1024,
+        low_resource_required: true,
+    },
+    {
+        model: "/models/Qwen3-0.6B-abliterated-MLC-q4f16_1/",
+        model_url: "/models/Qwen3-0.6B-abliterated-MLC-q4f16_1/",
+        model_id: "Qwen3-0.6B-abliterated-MLC-q4f16_1",
+        model_lib: "/wasm/*****.wasm",
+        vram_required_MB: 1024,
+        low_resource_required: true,
+    },
+    {
+        model: "/models/Llama-3.2-1B-Instruct-abliterated-q4f16_1-MLC/",
+        model_url: "/models/Llama-3.2-1B-Instruct-abliterated-q4f16_1-MLC/",
+        model_id: "Llama-3.2-1B-Instruct-abliterated-q4f16_1-MLC",
+        model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-1B-Instruct/Llama-3.2-1B-Instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm",
+        model_lib_url: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-1B-Instruct/Llama-3.2-1B-Instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm",
         vram_required_MB: 1500,
         low_resource_required: false,
     },
     {
-        model: "/models/Llama-3.2-1B-Instruct-abliterated-q4f16_1-MLC",
-        model_url: "/models/Llama-3.2-1B-Instruct-abliterated-q4f16_1-MLC",
-        model_id: "Llama-3.2-1B-Instruct-abliterated-q4f16_1-MLC",
-        model_lib: modelLibURLPrefix + modelVersion + "/Llama-3.2-1B-Instruct-q4f16_1_cs1k-webgpu.wasm",
-        model_lib_url: modelLibURLPrefix + modelVersion + "/Llama-3.2-1B-Instruct-q4f16_1_cs1k-webgpu.wasm",
+        model: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f32_1-MLC",
+        model_url: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f32_1-MLC",
+        model_id: "Llama-3.2-1B-Instruct-q4f32_1-MLC",
+        model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-1B-Instruct/Llama-3.2-1B-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm",
+        model_lib_url: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-1B-Instruct/Llama-3.2-1B-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm",
         vram_required_MB: 1500,
+        low_resource_required: false,
+    },
+    {
+        model: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f16_1-MLC/",
+        model_url: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f16_1-MLC/",
+        model_id: "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+        model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-1B-Instruct/Llama-3.2-1B-Instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm",
+        model_lib_url: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-1B-Instruct/Llama-3.2-1B-Instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm",
+        vram_required_MB: 1200,
         low_resource_required: false,
     },
     {
         model: "https://huggingface.co/mlc-ai/Llama-3.2-3B-Instruct-q4f32_1-MLC/",
         model_url: "https://huggingface.co/mlc-ai/Llama-3.2-3B-Instruct-q4f32_1-MLC/",
         model_id: "Llama-3.2-3B-Instruct-q4f32_1-MLC",
-        model_lib: modelLibURLPrefix + modelVersion + "/Llama-3.2-1B-Instruct-q4f32_1_cs1k-webgpu.wasm",
+        model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-3B-Instruct/Llama-3.2-3B-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm",
+        model_lib_url: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-3B-Instruct/Llama-3.2-3B-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm",
         vram_required_MB: 2500,
         low_resource_required: false,
     },
     {
-        model: "/models/SNOWflake_v1.2_UNCUTstash-1B",
-        model_url: "/models/SNOWflake_v1.2_UNCUTstash-1B",
+        model: "/models/SNOWflake_v1.2_UNCUTstash-1B/",
+        model_url: "/models/SNOWflake_v1.2_UNCUTstash-1B/",
         model_id: "SNOWflake_v1.2_UNCUTstash-1B",
         model_lib: "/wasm/SNOWflake_v1.0.wasm",
         vram_required_MB: 1024,
         low_resource_required: true,
     },
     {
-        model: "/models/SNOWflake_v1.2_UNCUTstash-3B",
-        model_url: "/models/SNOWflake_v1.2_UNCUTstash-3B",
+        model: "/models/SNOWflake_v1.2_UNCUTstash-3B/",
+        model_url: "/models/SNOWflake_v1.2_UNCUTstash-3B/",
         model_id: "SNOWflake_v1.2_UNCUTstash-3B",
         model_lib: "/wasm/SNOWflake_v1.0.wasm",
         model_lib_url: "/wasm/SNOWflake_v1.0.wasm",
@@ -78,7 +112,6 @@ let retrieveWorker: Worker | null = null;
 let rerankWorker: Worker | null = null;
 let inferenceWorker: Worker | null = null;
 let networkWorker: Worker | null = null;
-const cpuFallbackWorker: Worker | null = null;
 
 let currentEngine: MLCEngine | null = null;
 
@@ -106,18 +139,14 @@ export const getWorkers = {
 };
 
 // ============================================================================
-// CPU FALLBACK REMOVED
-// ============================================================================
-
-// ============================================================================
-// PRIMARY BOOTSTRAP — GPU FIRST, CPU FALLBACK
+// PRIMARY BOOTSTRAP — GPU FIRST
 // ============================================================================
 export async function bootstrapSpeculativePipeline(
     targetModel: string,
     draftModel: string | null,
     progressCallback: (text: string) => void
 ) {
-    // Reset state for clean bootstrap
+    // 1. Reset state for clean bootstrap
     if (currentEngine) {
         console.log(`[Pipeline] Unloading current engine to mount new target: ${targetModel}`);
         try { await currentEngine.unload(); } catch { /* ignore */ }
@@ -128,55 +157,20 @@ export async function bootstrapSpeculativePipeline(
         inferenceWorker = null;
     }
 
-    // ── STAGE 1: Try WebGPU via Web-LLM ────────────────────────────────────
     try {
-        progressCallback("Probing WebGPU adapter...");
-        if (!('gpu' in navigator)) { throw new Error("navigator.gpu is undefined. This browser or context does not expose the WebGPU API."); }
+        progressCallback("Probing WebGPU adapter & Secure Context...");
 
-        progressCallback(`Validating model registry for ${targetModel}...`);
-
-        // Ensure model.json is actually accessible and not intercepted by Vite SPA
-        const targetModelConfig = getModelList().find(m => m.model_id === targetModel);
-        if (targetModelConfig && targetModelConfig.model_url) {
-            try {
-                const modelJsonUrl = targetModelConfig.model_url.endsWith('/') ?
-                    `${targetModelConfig.model_url}mlc-chat-config.json` :
-                    `${targetModelConfig.model_url}/mlc-chat-config.json`;
-                const hfToken = import.meta.env.VITE_HF_TOKEN || localStorage.getItem('HF_TOKEN');
-                const headers: HeadersInit = {};
-                if (hfToken) headers['Authorization'] = `Bearer ${hfToken}`;
-
-                const headCheck = await fetch(modelJsonUrl, { method: 'HEAD', headers });
-                if (!headCheck.ok) {
-                    const authMsg = headCheck.status === 401 ? ' (Gated model. Make sure VITE_HF_TOKEN is set in .env)' : '';
-                    throw new Error(`Model weights not found at ${modelJsonUrl} (HTTP ${headCheck.status})${authMsg}`);
-                }
-                const contentType = headCheck.headers.get('content-type');
-                if (contentType && contentType.includes('text/html')) {
-                    throw new Error(`Unexpected token < Error prevented. Model directory not found. Server intercepted with index.html.`);
-                }
-
-                // Strictly verify WASM library exists, especially crucial for local mode
-                let targetWasmUrl = targetModelConfig.model_lib || targetModelConfig.model_lib_url;
-                if (!targetWasmUrl && currentExecutionMode === 'local') {
-                    targetWasmUrl = `/wasm/${targetModel}-webgpu.wasm`;
-                }
-                if (targetWasmUrl) {
-                    const wasmCheck = await fetch(targetWasmUrl, { method: 'HEAD' });
-                    if (!wasmCheck.ok) {
-                        throw new Error(`WASM execution binary missing: ${targetWasmUrl}. Please verify the file exists.`);
-                    }
-                    if (wasmCheck.headers.get('content-type')?.includes('text/html')) {
-                        throw new Error(`WASM missing: Server intercepted with index.html at ${targetWasmUrl}`);
-                    }
-                }
-            } catch (validationErr: unknown) {
-                console.error("[Pipeline] Pre-validation failed:", validationErr);
-                throw new Error(`Model validation failed: ${(validationErr as Error).message}`, { cause: validationErr });
-            }
+        // CRITICAL: WebGPU requires a Secure Context (HTTPS or localhost)
+        if (!window.isSecureContext) {
+            throw new Error("Insecure Context: WebGPU and OPFS require HTTPS or localhost. The browser has blocked hardware access.");
+        }
+        // CIRCUIT BREAKER: Strict WebGPU Enforcement
+        if (!('gpu' in navigator)) {
+            throw new Error("CIRCUIT BREAKER TRIPPED: navigator.gpu is undefined. Hardware acceleration is required. CPU fallback is disabled to prevent system lockup.");
         }
 
         progressCallback(`Mounting WebGPU engine: ${targetModel}...`);
+
 
         // Create fresh inference worker
         inferenceWorker = new Worker(
@@ -217,7 +211,6 @@ export async function bootstrapSpeculativePipeline(
                     }),
                     ...prebuiltAppConfig.model_list.map(model => {
                         const baseModel = { ...model };
-                        // Remove /resolve/main/ suffix since WebLLM natively resolves paths
                         (baseModel as ExtendedModelRecord).model_url = (model as ExtendedModelRecord).model_url || `https://huggingface.co/mlc-ai/${model.model_id}`;
                         baseModel.model_lib = new URL(`/wasm/${model.model_id}-webgpu.wasm`, self.location.origin).href;
                         (baseModel as ExtendedModelRecord).model_lib_url = new URL(`/wasm/${model.model_id}-webgpu.wasm`, self.location.origin).href;
@@ -227,10 +220,19 @@ export async function bootstrapSpeculativePipeline(
             };
             configOpts.appConfig = appConfig;
         } else {
-            configOpts.appConfig = { ...prebuiltAppConfig, model_list: [...customModels as ModelRecord[], ...prebuiltAppConfig.model_list] };
+            // Edge mode: only inject custom models that have fully remote model URLs.
+            // The abliterated model points to /models/ (local) so exclude it here.
+            const prebuiltIds = new Set(
+                prebuiltAppConfig.model_list.map(m => m.model_id)
+            );
+            const trueCustomModels = (customModels as ModelRecord[]).filter(
+                m => !m.model.startsWith('/') && !prebuiltIds.has(m.model_id)
+            );
+            configOpts.appConfig = {
+                ...prebuiltAppConfig,
+                model_list: [...trueCustomModels, ...prebuiltAppConfig.model_list]
+            };
         }
-        // Edge mode: DON'T touch appConfig at all — let Web-LLM use its
-        // built-in prebuiltAppConfig with correct jsdelivr CDN URLs
 
         currentEngine = (await CreateWebWorkerMLCEngine(
             inferenceWorker,
@@ -251,21 +253,27 @@ export async function bootstrapSpeculativePipeline(
         progressCallback("✅ WebGPU engine online — sovereign intelligence active.");
         return currentEngine;
 
-    } catch (gpuError: unknown) {
-        console.error("[Pipeline] WebGPU bootstrap failed:", (gpuError as Error).message || gpuError);
-        progressCallback(`🚨 FATAL: WebGPU initialization failed. Hardware acceleration is strictly required.`);
+    } catch (gpuError: any) {
+        let errorMessage = gpuError.message || String(gpuError);
 
-        // Clean up the failed GPU worker
+        if (errorMessage.includes("Unexpected token '<'") || errorMessage.includes("is not valid JSON")) {
+            errorMessage = "Local model files not found. Please switch to 'EDGE NETWORK' mode to download weights, or place them in public/models/.";
+        } else if (errorMessage.includes("Failed to execute 'add' on 'Cache'") || errorMessage.includes("Request failed")) {
+            errorMessage = "Model shard fetch failed. A required file (WASM lib or weight shard) returned a non-200 response. Check network connectivity, or try switching to the f32 model variant.";
+        }
+
+        console.error("[Pipeline] WebGPU bootstrap failed:", errorMessage);
+        progressCallback(`🚨 FATAL: ${errorMessage}`);
+
         if (inferenceWorker) {
             inferenceWorker.terminate();
             inferenceWorker = null;
         }
         currentEngine = null;
 
-        throw new Error(`WebGPU is strictly required for this application but failed to initialize. Error: ${(gpuError as Error).message || gpuError}`, { cause: gpuError });
+        throw new Error(`WebGPU Initialization Failed: ${errorMessage}`);
     }
 }
-
 
 // ============================================================================
 // UNIFIED WORKER DISPATCH — HANDLES BOTH GPU ENGINE AND CPU FALLBACK
@@ -323,37 +331,10 @@ export function runWorker<T>(
                 return;
             }
 
-            // PATH B: CPU Fallback is alive
-            if (cpuFallbackWorker) {
-                const handleCpuResponse = (e: MessageEvent) => {
-                    if (e.data.taskId === taskId || e.data.id === taskId) {
-                        if (e.data.status === 'success') {
-                            clearTimeout(timeoutId);
-                            cpuFallbackWorker!.removeEventListener('message', handleCpuResponse);
-                            resolve({ text: e.data.text || e.data.result?.text } as T);
-                        } else if (e.data.status === 'progress' && onProgress) {
-                            if (e.data.delta) onProgress({ status: 'progress', delta: e.data.delta });
-                            else onProgress({ status: 'progress', log: e.data.message });
-                        } else if (e.data.status === 'error') {
-                            clearTimeout(timeoutId);
-                            cpuFallbackWorker!.removeEventListener('message', handleCpuResponse);
-                            reject(new Error(e.data.message));
-                        }
-                    }
-                };
-                cpuFallbackWorker.addEventListener('message', handleCpuResponse);
-                cpuFallbackWorker.postMessage({
-                    action: 'GENERATE',
-                    taskId,
-                    payload
-                });
-                return;
-            }
-
-            // PATH C: Nothing is initialized — reject immediately
+            // PATH B: Nothing is initialized — reject immediately (Circuit Breaker)
             clearTimeout(timeoutId);
             reject(new Error(
-                "No inference engine available. WebGPU initialization failed."
+                "CIRCUIT BREAKER: No inference engine available. WebGPU initialization failed."
             ));
             return;
         }
