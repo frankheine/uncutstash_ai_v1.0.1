@@ -42,21 +42,23 @@ let networkWorker: Worker | null = null;
 
 let currentEngine: MLCEngine | null = null;
 
+export function getCurrentEngine() { return currentEngine; }
+
 // PHASE 1 FIX: PortManager Singleton to prevent IPC Memory Leaks
 class PortManager {
     private activePorts: Set<MessagePort> = new Set();
-    
+
     register(port: MessagePort) {
         this.activePorts.add(port);
     }
-    
+
     unregister(port: MessagePort) {
         this.activePorts.delete(port);
     }
 
     closeAll() {
         this.activePorts.forEach(port => {
-            try { port.close(); } catch (e) {}
+            try { port.close(); } catch (e) { }
         });
         this.activePorts.clear();
     }
@@ -310,7 +312,7 @@ export function runWorker<T>(
         }
 
         const channel = new MessageChannel();
-        
+
         // PHASE 1 FIX: Register port to prevent leaks
         portManager.register(channel.port1);
 

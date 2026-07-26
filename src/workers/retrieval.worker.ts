@@ -100,7 +100,8 @@ async function loadFromOPFS() {
 
 self.onmessage = async (event: MessageEvent) => {
     const { action, taskId } = event.data;
-    const replyPort = event.ports[0] || self;
+    const replyPort = event.ports[0];
+    if (!replyPort) { console.error("[Retrieval Worker] No reply port."); return; }
 
     try {
         if (!db) {

@@ -44,10 +44,18 @@ class NetworkStreamConsumer implements AsyncIterable<any> {
 
     async *[Symbol.asyncIterator]() {
         while (true) {
-            const msg = this.queue.shift() || await new Promise(r => this.resolver = r);
-            if (msg.status === 'success') break;
+            const msg: any = this.queue.length > 0
+                ? this.queue.shift()
+                : await new Promise<any>(r => { this.resolver = r; });
             if (msg.status === 'error') throw new Error(msg.message);
             if (msg.status === 'chunk') yield msg.data;
+            if (msg.status === 'success') {
+                while (this.queue.length > 0) {
+                    const queued: any = this.queue.shift();
+                    if (queued?.status === 'chunk') yield queued.data;
+                }
+                break;
+            }
         }
     }
 }
@@ -62,24 +70,27 @@ async function retrieveNode(state: typeof GraphState.State) {
     };
 
     try {
-        // FIX: Flush Deferred Staging Memory BEFORE WebGPU mounts
-        try {
-            const root = await navigator.storage.getDirectory();
-            const fileHandle = await root.getFileHandle('staging_memory.json');
-            const file = await fileHandle.getFile();
-            const text = await file.text();
-            if (text) {
-                notify('🧠 Vectorizing deferred memories...');
-                const logs = JSON.parse(text);
-                for (const log of logs) {
-                    const { embedding } = await runWorker<any>('embed', { text: log });
-                    await runWorker<any>('retrieve', { action: 'insert', text: log, embedding });
+        // FIX: Only flush deferred staging if WebGPU is NOT mounted (RAM Valley mandate)
+        const { getCurrentEngine } = await import('./rag/pipeline');
+        if (!getCurrentEngine()) {
+            try {
+                const root = await navigator.storage.getDirectory();
+                const fileHandle = await root.getFileHandle('staging_memory.json');
+                const file = await fileHandle.getFile();
+                const text = await file.text();
+                if (text) {
+                    notify('🧠 Vectorizing deferred memories...');
+                    const logs = JSON.parse(text);
+                    for (const log of logs) {
+                        const { embedding } = await runWorker<any>('embed', { text: log });
+                        await runWorker<any>('retrieve', { action: 'insert', text: log, embedding });
+                    }
+                    const writable = await (fileHandle as any).createWritable();
+                    await writable.write("");
+                    await writable.close();
                 }
-                const writable = await (fileHandle as any).createWritable();
-                await writable.write(""); // Wipe staging
-                await writable.close();
-            }
-        } catch (e) { /* No staging file exists yet, ignore */ }
+            } catch (e) { /* No staging file exists yet, ignore */ }
+        }
 
         const cachedContext = ragCache.lookup(actualQuestion);
         if (cachedContext) {

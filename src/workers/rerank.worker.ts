@@ -40,7 +40,6 @@ self.onmessage = async (event: MessageEvent) => {
                 initPromise = pipeline('text-classification', 'Xenova/bge-reranker-v2-m3', {
                     device: 'wasm',
                     quantized: true,
-                    local_files_only: true, // Enforces the air-gap safely
                     progress_callback: (data: any) => {
                         if (data.status === 'progress' && typeof data.progress === 'number') {
                             replyPort.postMessage({ taskId, status: 'progress', log: `Loading Cross-Encoder Weights: ${Math.round(data.progress)}%` });
@@ -58,8 +57,8 @@ self.onmessage = async (event: MessageEvent) => {
 
         const reranked: any[] = []; // 👈 Added explicit any[] type to prevent 'never' array inference
         for (const doc of candidates) {
-            // Evaluates text queries alongside document data strings simultaneously
-            const result = await reranker(query, doc.text);
+            // 2. Fix pipeline call (line 1320):
+            const result = await reranker([[query, doc.text]]);
             reranked.push({ ...doc, rerankScore: result[0].score });
         }
 

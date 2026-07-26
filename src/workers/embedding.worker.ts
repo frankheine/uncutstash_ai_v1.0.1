@@ -37,7 +37,6 @@ self.onmessage = async (event: MessageEvent) => {
                 initPromise = pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
                     device: 'wasm',
                     quantized: true,
-                    local_files_only: true, // Enforces the air-gap safely
                     progress_callback: (data: any) => {
                         if (data.status === 'progress' && typeof data.progress === 'number') {
                             replyPort.postMessage({ taskId, status: 'progress', log: `Loading Embedding Weights: ${Math.round(data.progress)}%` });

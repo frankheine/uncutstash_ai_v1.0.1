@@ -19,8 +19,8 @@ graphify*
 repomix*
 emsdk*
 timeline_artifacts
-# Editor directories and files
-.vscode/*
+vite_build.txt
+eslint.config.js
 !.vscode/extensions.json
 .idea
 .DS_Store
@@ -38,7 +38,7 @@ graphify*
 .playwright*
 check-screenshot.png
 scripts*
-
+components*
 .playwright_cache
 agent_checkpoint*.png
 uncutstash_ai_v1.0.1/
@@ -46,3 +46,5 @@ repomix*
 git-filter-repo.py
 git_search.txt
 codebase*
+README.md
+package*
