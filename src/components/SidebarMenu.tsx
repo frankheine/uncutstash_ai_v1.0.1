@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, PlusCircle, Settings, Network, HardDrive, History } from 'lucide-react';
-import { CommsPanel } from './CommsPanel';
 import { ScrollArea } from './ui/scroll-area';
 import localforage from 'localforage';
 
@@ -11,14 +10,14 @@ interface SidebarMenuProps {
 export function SidebarMenu({ onOpenSettings }: SidebarMenuProps) {
   const [history, setHistory] = useState<{ id: string, title: string }[]>([]);
   const [username, setUsername] = useState('Sovereign User');
-  
+
   useEffect(() => {
     // Load local history and settings
     const loadState = async () => {
       try {
         const savedHistory = await localforage.getItem<{ id: string, title: string }[]>('sovereign_history');
         if (savedHistory) setHistory(savedHistory);
-        
+
         const savedUser = localStorage.getItem('sovereign_username');
         if (savedUser) setUsername(savedUser);
       } catch (e) {
@@ -30,7 +29,7 @@ export function SidebarMenu({ onOpenSettings }: SidebarMenuProps) {
 
   return (
     <div className="h-full flex flex-col justify-between p-4 text-white/70 bg-black/30 backdrop-blur-md">
-      
+
       <div className="flex flex-col gap-6 h-full">
         {/* Top Actions */}
         <div className="flex flex-col gap-2">
@@ -38,21 +37,21 @@ export function SidebarMenu({ onOpenSettings }: SidebarMenuProps) {
             <PlusCircle size={18} className="text-violet-400" />
             <span>New Chat</span>
           </button>
-          <button 
+          <button
             onClick={() => {
-                const messages = document.querySelectorAll('.assistant-ui-message');
-                let md = "# Sovereign AI Session Export\n\n";
-                messages.forEach(m => {
-                    const role = m.getAttribute('data-role') || 'Unknown';
-                    const text = m.textContent || '';
-                    md += `**${role}**\n${text}\n\n`;
-                });
-                const blob = new Blob([md], { type: 'text/markdown' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `sovereign_session_${new Date().getTime()}.md`;
-                a.click();
+              const messages = document.querySelectorAll('.assistant-ui-message');
+              let md = "# Sovereign AI Session Export\n\n";
+              messages.forEach(m => {
+                const role = m.getAttribute('data-role') || 'Unknown';
+                const text = m.textContent || '';
+                md += `**${role}**\n${text}\n\n`;
+              });
+              const blob = new Blob([md], { type: 'text/markdown' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `sovereign_session_${new Date().getTime()}.md`;
+              a.click();
             }}
             className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-blue-500/20 transition-all border border-white/5 hover:border-blue-500/30 text-white shadow-sm font-medium"
           >
@@ -63,7 +62,7 @@ export function SidebarMenu({ onOpenSettings }: SidebarMenuProps) {
 
         <ScrollArea className="flex-1 pr-2 custom-scrollbar">
           <div className="flex flex-col gap-8 pb-4">
-            
+
             {/* History Section */}
             <div>
               <h2 className="font-mono text-[10px] uppercase tracking-widest text-white/40 mb-3 flex items-center gap-2">
@@ -82,15 +81,6 @@ export function SidebarMenu({ onOpenSettings }: SidebarMenuProps) {
               </div>
             </div>
 
-            {/* Network / Comms */}
-            <div>
-              <h2 className="font-mono text-[10px] uppercase tracking-widest text-violet-400 mb-3 drop-shadow-[0_0_8px_rgba(167,139,250,0.5)] flex items-center gap-2">
-                <Network size={12} />
-                <span>Sovereign Networks</span>
-              </h2>
-              <CommsPanel />
-            </div>
-            
             {/* RAG DB */}
             <div>
               <h2 className="font-mono text-[10px] uppercase tracking-widest text-pink-400 mb-3 drop-shadow-[0_0_8px_rgba(244,114,182,0.5)] flex items-center gap-2">
@@ -124,7 +114,7 @@ export function SidebarMenu({ onOpenSettings }: SidebarMenuProps) {
             <span className="text-[10px] text-white/40 mt-1 uppercase tracking-wider font-mono">Sovereign Node</span>
           </div>
         </div>
-        <button 
+        <button
           onClick={onOpenSettings}
           className="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/50 hover:text-white"
           title="Advanced Settings"

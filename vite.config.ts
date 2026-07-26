@@ -19,19 +19,25 @@ function getContentType(filePath: string): string {
 }
 
 export default defineConfig({
-  // ADD this inside defineConfig:
+  // FIX: Added the alias resolver back so Vite knows what "@/" means!
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
   build: {
-    target: 'esnext', // Required for Top-Level Await and WebGPU
-    assetsInlineLimit: 0, // Prevents base64 corruption of binary model fragments
+    target: 'esnext',
+    assetsInlineLimit: 0,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'mlc-vendor': ['@mlc-ai/web-llm'],
-          'react-vendor': ['react', 'react-dom', 'framer-motion', 'gsap']
+        manualChunks(id) {
+          if (id.includes('@mlc-ai/web-llm')) return 'mlc-vendor';
+          if (id.includes('react') || id.includes('framer-motion') || id.includes('gsap')) return 'react-vendor';
         }
       }
     }
   },
+
   plugins: [
     react(),
     tailwindcss(),
@@ -41,14 +47,12 @@ export default defineConfig({
       filename: 'sw.ts',
       registerType: 'autoUpdate',
       injectManifest: {
-        maximumFileSizeToCacheInBytes: 260000000 // Safely handles mid-sized model binaries
+        maximumFileSizeToCacheInBytes: 260000000
       }
     })
   ],
-  resolve: {
-    tsconfigPaths: true
-  },
-  assetsInclude: ['**/*.wasm', '**/*.onnx', '**/*.gguf', '**/*.bin'],
+  assetsInclude: ['**/*.wasm', '**/*.json', '**/*.onnx', '**/*.gguf', '**/*.bin', '**/param_shard_*.bin'],
+
   server: {
     port: 5173,
     strictPort: true,
@@ -57,10 +61,12 @@ export default defineConfig({
       '.ngrok-free.dev',
       '.free.pinggy.net',
       '.run.pinggy-free.link'
-    ], // FIX: Trust ngrok tunnel traffic
-    headers: crossOriginHeaders,
+    ],
+    headers: {
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cross-Origin-Opener-Policy": "same-origin",
+    },
     watch: {
-      // CRITICAL FIX: Prevent Chokidar from indexing massive AI binaries
       ignored: [
         '**/public/models/**',
         '**/public/wasm/**',
@@ -68,15 +74,17 @@ export default defineConfig({
       ]
     }
   },
+
   preview: {
-    headers: crossOriginHeaders,
+    headers: crossOriginHeaders
   },
+
   worker: {
-    format: 'es',
-    // Native tsconfig paths handles workers now
+    format: 'es'
   },
+
   optimizeDeps: {
     exclude: ['@mlc-ai/web-llm', '@wllama/wllama', '@huggingface/transformers', 'hiredis', 'libbloom'],
     include: ['@google/generative-ai']
-  },
+  }
 });

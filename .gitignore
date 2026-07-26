@@ -15,7 +15,10 @@ dist-ssr
 check-screenshot-boot.png
 check-screenshot-chat.png
 check-screenshot-failed.png
-
+graphify*
+repomix*
+emsdk*
+timeline_artifacts
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -28,6 +31,8 @@ check-screenshot-failed.png
 timeline_artifacts
 codebase*
 *.sw?
+dynamic*
+
 
 .agents/rules/uncutstash-si.md
 .playwright*
@@ -40,3 +45,4 @@ uncutstash_ai_v1.0.1/
 repomix-output.xml
 git-filter-repo.py
 git_search.txt
+codebase*

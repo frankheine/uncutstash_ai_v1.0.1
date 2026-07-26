@@ -4,7 +4,7 @@ declare const self: ServiceWorkerGlobalScope; // Maps the global 'self' keyword 
 // @ts-ignore
 const precacheManifest = self.__WB_MANIFEST;
 
-const MODEL_CACHE_NAME = "uncutstash-ai-models-v1";
+const MODEL_CACHE_NAME = "uncutstash-ai-models-v2";
 
 function getOPFSFilename(urlStr: string) {
     const url = new URL(urlStr);
@@ -98,7 +98,15 @@ self.addEventListener("install", () => {
 });
 
 self.addEventListener("activate", (event) => {
-    event.waitUntil(self.clients.claim());
+    event.waitUntil(
+        (async () => {
+            const keys = await caches.keys();
+            await Promise.all(
+                keys.filter(k => k !== MODEL_CACHE_NAME).map(k => caches.delete(k))
+            );
+            await self.clients.claim();
+        })()
+    );
 });
 
 self.addEventListener("fetch", (event: any) => {
@@ -137,13 +145,22 @@ self.addEventListener("fetch", (event: any) => {
 
                     if (networkResponse.status === 200) {
                         const contentType = networkResponse.headers.get("content-type");
-                        if (contentType && !contentType.includes("text/html")) {
-                            if (isHeavyAsset) {
-                                OPFSCache.put(event.request, networkResponse.clone()).catch(console.error);
-                            } else {
-                                const cache = await caches.open(MODEL_CACHE_NAME);
-                                await cache.put(event.request, networkResponse.clone());
-                            }
+
+                        if (contentType && contentType.includes("text/html")) {
+                            // This means the real asset 404'd and the dev server (or host)
+                            // served index.html as an SPA fallback. Never hand this to WebLLM.
+                            console.error(`[SW] Asset request returned HTML fallback instead of a real file: ${event.request.url}`);
+                            return new Response("Asset not found (received SPA fallback instead of binary/JSON).", {
+                                status: 404,
+                                statusText: "Not Found",
+                            });
+                        }
+
+                        if (isHeavyAsset) {
+                            OPFSCache.put(event.request, networkResponse.clone()).catch(console.error);
+                        } else {
+                            const cache = await caches.open(MODEL_CACHE_NAME);
+                            await cache.put(event.request, networkResponse.clone());
                         }
                     }
 

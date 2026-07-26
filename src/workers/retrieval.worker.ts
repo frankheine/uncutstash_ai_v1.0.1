@@ -1,30 +1,90 @@
+// src/workers/retrieval.worker.ts
 import { create, insert, search, save, load } from '@orama/orama';
 
 let db: any = null;
+let encryptionKey: CryptoKey | null = null;
 
+// --- AES-256-GCM ENCRYPTION UTILS ---
+async function getOrCreateKey(): Promise<CryptoKey> {
+    if (encryptionKey) return encryptionKey;
+    
+    // In Phase 4, this will be derived from a user PIN. For now, we generate a persistent local key.
+    const root = await navigator.storage.getDirectory();
+    try {
+        const keyHandle = await root.getFileHandle('sovereign.key');
+        const file = await keyHandle.getFile();
+        const rawKey = await file.arrayBuffer();
+        encryptionKey = await crypto.subtle.importKey("raw", rawKey, "AES-GCM", true, ["encrypt", "decrypt"]);
+    } catch {
+        encryptionKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+        const rawKey = await crypto.subtle.exportKey("raw", encryptionKey);
+        const keyHandle = await root.getFileHandle('sovereign.key', { create: true });
+        const writable = await (keyHandle as any).createWritable();
+        await writable.write(rawKey);
+        await writable.close();
+    }
+    return encryptionKey;
+}
+
+async function encryptData(data: string): Promise<Uint8Array> {
+    const key = await getOrCreateKey();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(data);
+    const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
+    
+    // Combine IV and Ciphertext for storage
+    const payload = new Uint8Array(iv.length + ciphertext.byteLength);
+    payload.set(iv, 0);
+    payload.set(new Uint8Array(ciphertext), iv.length);
+    return payload;
+}
+
+async function decryptData(payload: Uint8Array): Promise<string> {
+    const key = await getOrCreateKey();
+    const iv = payload.slice(0, 12);
+    const ciphertext = payload.slice(12);
+    const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
+    return new TextDecoder().decode(decrypted);
+}
+
+// --- ORAMA OPFS LOGIC ---
 async function saveToOPFS(database: any) {
     try {
         const root = await navigator.storage.getDirectory();
-        const fileHandle = await root.getFileHandle('sovereign-vector-db.json', { create: true });
-        const writable = await fileHandle.createWritable();
+        // Write to .tmp first for ACID compliance (Crash protection)
+        const tmpHandle = await root.getFileHandle('sovereign-vector-db.tmp', { create: true });
+        const writable = await (tmpHandle as any).createWritable();
+        
         const dbData = await save(database);
-        await writable.write(JSON.stringify(dbData));
+        const encryptedPayload = await encryptData(JSON.stringify(dbData));
+        
+        await writable.write(encryptedPayload);
         await writable.close();
+
+        // Atomic rename (OPFS doesn't have native rename yet, so we copy and delete)
+        const finalHandle = await root.getFileHandle('sovereign-vector-db.enc', { create: true });
+        const finalWritable = await (finalHandle as any).createWritable();
+        await finalWritable.write(encryptedPayload);
+        await finalWritable.close();
+        await root.removeEntry('sovereign-vector-db.tmp');
+        
     } catch (e) {
-        console.warn("[Orama Worker] Failed to persist to OPFS", e);
+        console.warn("[Orama Worker] Failed to persist encrypted DB to OPFS", e);
     }
 }
 
 async function loadFromOPFS() {
     try {
         const root = await navigator.storage.getDirectory();
-        const fileHandle = await root.getFileHandle('sovereign-vector-db.json');
+        const fileHandle = await root.getFileHandle('sovereign-vector-db.enc');
         const file = await fileHandle.getFile();
-        const text = await file.text();
-        const parsed = JSON.parse(text);
+        const arrayBuffer = await file.arrayBuffer();
+        
+        const decryptedText = await decryptData(new Uint8Array(arrayBuffer));
+        const parsed = JSON.parse(decryptedText);
         
         const newDb = await create({
-            schema: { text: 'string', embedding: 'vector[384]' }
+            schema: { text: 'string', embedding: 'vector[384]', status: 'string' } // Added status for Phase 4 Conflict Resolution
         });
         await load(newDb, parsed);
         return newDb;
@@ -41,48 +101,30 @@ self.onmessage = async (event: MessageEvent) => {
         if (!db) {
             db = await loadFromOPFS();
             if (db) {
-                console.log("[Orama Worker] Successfully restored vector database from OPFS");
+                console.log("[Orama Worker] Successfully restored ENCRYPTED vector database from OPFS");
             } else {
-                console.log("[Orama Worker] OPFS restore failed or DB not found, creating new");
-                db = await create({
-                    schema: {
-                        text: 'string',
-                        embedding: 'vector[384]',
-                    }
-                });
+                db = await create({ schema: { text: 'string', embedding: 'vector[384]', status: 'string' } });
                 console.log("[Orama Worker] Initialized new OPFS-backed vector database");
             }
         }
 
         if (action === 'insert') {
             const { text, embedding } = event.data;
-            await insert(db, { text, embedding });
-            await saveToOPFS(db);
-            replyPort.postMessage({ taskId, status: 'success' });
-        }
-
-        if (action === 'flush') {
-            console.log("[Orama Worker] Flushing vector database...");
-            db = await create({
-                schema: {
-                    text: 'string',
-                    embedding: 'vector[384]',
-                }
-            });
+            await insert(db, { text, embedding, status: 'active' });
             await saveToOPFS(db);
             replyPort.postMessage({ taskId, status: 'success' });
         }
 
         if (action === 'search') {
             const { queryVector, queryText } = event.data;
-
-            replyPort.postMessage({ taskId, status: 'progress', log: '🔍 Executing Orama Hybrid Search...' });
+            replyPort.postMessage({ taskId, status: 'progress', log: '🔍 Executing Secure Hybrid Search...' });
 
             try {
                 const results = await search(db, {
                     term: queryText,
                     mode: 'hybrid',
                     vector: { value: queryVector, property: 'embedding' },
+                    where: { status: 'active' }, // Only search active memories
                     limit: 10
                 });
 
@@ -94,7 +136,6 @@ self.onmessage = async (event: MessageEvent) => {
 
                 replyPort.postMessage({ taskId, status: 'success', candidates });
             } catch (searchError: any) {
-                console.log("[Orama Worker] Search failed (likely empty db):", searchError);
                 replyPort.postMessage({ taskId, status: 'success', candidates: [] });
             }
         }

@@ -1,21 +1,17 @@
-/// <reference lib="webworker" />
+// src/workers/inference.worker.ts
 import { WebWorkerMLCEngineHandler } from "@mlc-ai/web-llm";
 
-if (typeof (globalThis as any).document === 'undefined') {
-    (globalThis as any).document = { currentScript: null };
-}
+console.log("🛠️ [Inference Worker] Booting up...");
 
-const handler = new WebWorkerMLCEngineHandler();
-
-self.onmessage = (msg: MessageEvent) => {
-    // STRICT ALLOW-LIST: Web-LLM RPC messages ALWAYS have a 'kind' and 'uuid'
-    if (!msg.data || typeof msg.data.kind !== 'string' || typeof msg.data.uuid !== 'string') {
-        return;
-    }
-
-    try {
+try {
+    // This handler is the "walkie-talkie" that talks to pipeline.ts
+    const handler = new WebWorkerMLCEngineHandler();
+    
+    self.onmessage = (msg: MessageEvent) => {
         handler.onmessage(msg);
-    } catch (e) {
-        console.warn("[Inference Worker] Context Loss or RPC Error:", e);
-    }
-};
+    };
+    
+    console.log("🛠️ [Inference Worker] Handshake listener active.");
+} catch (error) {
+    console.error("🚨 [Inference Worker] Fatal crash during setup:", error);
+}

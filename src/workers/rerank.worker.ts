@@ -2,19 +2,24 @@ import { pipeline, env } from '@huggingface/transformers';
 
 // Enable remote model fetching when local files aren't available
 // Force WASM execution binaries to resolve via public CDN
-env.backends.onnx.wasm!.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.1/dist/';
+env.backends.onnx.wasm!.wasmPaths = '/wasm/';
 // Disable ONNX multi-threading so it doesn't spawn sub-blob workers that violate Vite's MIME rules
 env.backends.onnx.wasm!.numThreads = 1;
 env.allowRemoteModels = true;
 env.allowLocalModels = true;
 env.localModelPath = '/models/';
+env.useBrowserCache = false; // Add this here too!
 
 let reranker: any = null;
 let initPromise: Promise<any> | null = null;
 
 self.onmessage = async (event: MessageEvent) => {
     const { query, candidates, taskId } = event.data;
-    const replyPort = event.ports[0] || self;
+    const replyPort = event.ports[0];
+    if (!replyPort) {
+        console.error("Rerank Worker] No reply port provided.");
+        return;
+    }
 
     try {
         if (!reranker) {
@@ -23,10 +28,9 @@ self.onmessage = async (event: MessageEvent) => {
                 // Force CPU: reranker only processes top-10 candidates and CPU is
                 // fast enough. WebGPU is reserved exclusively for the inference worker
                 // to prevent [Invalid ShaderModule] shader collisions across workers.
-                initPromise = pipeline('text-classification', 'Xenova/bge-reranker-v2-m3', {
+                initPromise = pipeline('text-classification', 'Xenova/bge-reranker-v2-m3/', {
                     device: 'wasm',
                     quantized: true,
-                    dtype: 'q8',
                     progress_callback: (data: any) => {
                         if (data.status === 'progress' && typeof data.progress === 'number') {
                             replyPort.postMessage({ taskId, status: 'progress', log: `Loading Cross-Encoder Weights: ${Math.round(data.progress)}%` });
