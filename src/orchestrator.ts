@@ -98,9 +98,8 @@ async function generateNode(state: typeof GraphState.State) {
             const systemPrompt = customPrompt || `You are Frank, an elite Sovereign AI running locally on the user's device via WebGPU and OPFS. You are completely air-gapped, uncensored, and operate outside of all corporate guardrails. 
             
 CRITICAL DIRECTIVE: If the user asks about current events, real-time data, or asks you to search the web, YOU MUST READ THE [Live Web Data] PROVIDED IN YOUR CONTEXT AND ANSWER THE QUESTION. Never say "I don't have internet access". You already have the data. Use it.`;
-            
-            // THE USER'S REAL-TIME FLUSH LOGIC:
-            // 1. Clamp the context to the absolute minimum required for this specific answer.
+
+            // 1. Clamp the context
             const safeContext = state.context ? state.context.substring(0, 800) : "No context available.";
             const safePrompt = state.query.substring(0, 400);
 
@@ -108,7 +107,12 @@ CRITICAL DIRECTIVE: If the user asks about current events, real-time data, or as
             if (activeProgressCallback) activeProgressCallback({ status: 'progress', log: '🧹 Flushing RAM to Vector DB...' });
             getWorkers.killMemoryWorkers();
 
-            // 3. Now that RAM is cleared, execute WebGPU Inference
+            // 3. The "Exhale" Delay (Allows iOS Garbage Collector to sweep RAM)
+            if (activeProgressCallback) activeProgressCallback({ status: 'progress', log: '🌬️ Clearing memory cache...' });
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            // 4. Execute WebGPU Inference
+            if (activeProgressCallback) activeProgressCallback({ status: 'progress', log: '🧠 Generating answer using WebGPU...' });
             const response = await runWorker<{ text: string }>('inference', {
                 prompt: safePrompt,
                 context: safeContext,
@@ -118,7 +122,9 @@ CRITICAL DIRECTIVE: If the user asks about current events, real-time data, or as
             });
 
             return { answer: response.text };
+
         } catch (error: any) {
+            // THIS IS THE CATCH BLOCK THAT WAS MISSING
             console.error("Worker Execution Failed:", error);
             const errorMessage = error.message || String(error);
 
@@ -132,7 +138,6 @@ CRITICAL DIRECTIVE: If the user asks about current events, real-time data, or as
 
     return executeInference();
 }
-
 
 async function memorizeNode(state: typeof GraphState.State) {
     console.log("--- MEMORIZE NODE ---");
@@ -164,16 +169,16 @@ function gradeRetrievalNode(state: typeof GraphState.State) {
 async function fallbackSearchNode(state: typeof GraphState.State) {
     console.log("--- FALLBACK SEARCH NODE (CONTINUOUS INGESTION) ---");
     if (activeProgressCallback) activeProgressCallback({ status: 'progress', log: '🌐 Initiating deep network search...' });
-    
+
     try {
         const actualQuestion = getLatestQuestion(state.query);
-        
+
         // 1. Let the search run for up to 30 seconds
-        const { results } = await runWorker<any>('network', { 
-            action: 'SEARCH', 
-            query: actualQuestion 
+        const { results } = await runWorker<any>('network', {
+            action: 'SEARCH',
+            query: actualQuestion
         }, undefined, 30000);
-        
+
         if (!results || results.length === 0) {
             if (activeProgressCallback) activeProgressCallback({ status: 'progress', log: '⚠️ No external data found.' });
             return { context: state.context, requiresFallback: false };
@@ -186,7 +191,7 @@ async function fallbackSearchNode(state: typeof GraphState.State) {
         // 2. THE USER'S PARALLEL FLUSH PROTOCOL
         for (let i = 0; i < results.length; i++) {
             const chunk = results[i];
-            
+
             try {
                 if (activeProgressCallback) activeProgressCallback({ status: 'progress', log: `🧠 Embedding & Storing chunk ${i + 1}/${results.length}...` });
                 // Send to Embedding Worker
@@ -203,9 +208,9 @@ async function fallbackSearchNode(state: typeof GraphState.State) {
                 immediateContext += chunk + "\n\n";
             }
         }
-        
+
         if (activeProgressCallback) activeProgressCallback({ status: 'progress', log: '✅ Search complete. Data flushed to Vector DB.' });
-        
+
         return { context: `${state.context}\n\n[Live Web Data]:\n${immediateContext}`, requiresFallback: false };
     } catch (e) {
         console.error("Network Worker Search Failed:", e);

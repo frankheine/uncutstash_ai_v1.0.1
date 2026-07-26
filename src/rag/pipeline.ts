@@ -12,7 +12,7 @@ export interface ExtendedModelRecord extends ModelRecord {
 // --- 1. SOVEREIGN MODEL CATALOG ---
 const customModels: ExtendedModelRecord[] = [
     {
-        model: "/models/Qwen3-0.6B-abliterated-q4f16_1-MLC/",   // added -MLC
+        model: "/models/Qwen3-0.6B-abliterated-q4f16_1-MLC/resolve/main/",   // added -MLC
         model_id: "Qwen3-0.6B-abliterated-q4f16_1-MLC",
         model_lib: "/wasm/Qwen3-0.6B-q4f16_1-ctx4k_cs1k-webgpu.wasm",
         vram_required_MB: 1024,
@@ -22,7 +22,7 @@ const customModels: ExtendedModelRecord[] = [
     // ADD THIS NEW BLOCK FOR YOUR F32 MODEL:
     {
         model_id: "Qwen2-0.5B-Instruct-q4f32_1-MLC",
-        model: "/models/Qwen2-0.5B-Instruct-q4f32_1-MLC/", // Your local path
+        model: "/models/Qwen2-0.5B-Instruct-q4f32_1-MLC/resolve/main/", // Your local path
         model_lib: "/wasm/Qwen2-0.5B-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm",
         vram_required_MB: 800,
         low_resource_required: true,

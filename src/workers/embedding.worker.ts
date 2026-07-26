@@ -4,7 +4,13 @@ env.allowRemoteModels = true;
 env.allowLocalModels = true;
 env.localModelPath = '/models/';
 env.useBrowserCache = false;
-env.backends.onnx.wasm!.wasmPaths = '/wasm/';
+// Explicitly map the files so ONNX never requests the missing .jsep.wasm file
+env.backends.onnx.wasm!.wasmPaths = {
+    'ort-wasm.wasm': self.location.origin + '/wasm/ort-wasm.wasm',
+    'ort-wasm-simd.wasm': self.location.origin + '/wasm/ort-wasm-simd.wasm',
+    'ort-wasm-threaded.wasm': self.location.origin + '/wasm/ort-wasm-threaded.wasm',
+    'ort-wasm-simd-threaded.wasm': self.location.origin + '/wasm/ort-wasm-simd-threaded.wasm'
+};
 env.backends.onnx.wasm!.numThreads = 1;
 env.backends.onnx.wasm!.simd = false;
 env.backends.onnx.wasm!.proxy = false;
@@ -25,9 +31,10 @@ self.onmessage = async (event: MessageEvent) => {
         if (!extractor) {
             if (!initPromise) {
                 replyPort.postMessage({ taskId, status: 'progress', log: '🧬 Initializing embedding model...' });
-                initPromise = pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2/', {
+                initPromise = pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
                     device: 'wasm',
                     quantized: true,
+                    local_files_only: true, // Enforces the air-gap safely
                     progress_callback: (data: any) => {
                         if (data.status === 'progress' && typeof data.progress === 'number') {
                             replyPort.postMessage({ taskId, status: 'progress', log: `Loading Embedding Weights: ${Math.round(data.progress)}%` });

@@ -25,7 +25,11 @@ const PanelGroup = ResizablePanelGroup as any;
 
 export default function App() {
   const { targetModel, isBooting, engineReady, setEngineState, borderStyle, bgVariant, setUIPreferences } = useSovereignStore();
-
+  // Example of how your ModelSelector updates the global state:
+  // <ModelSelector 
+  //    isBooting={isBooting} 
+  //    onModelChange={(target) => useSovereignStore.getState().setModel(target)} 
+  // />
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [scrollMode, setScrollMode] = useState<"container" | "page">("container");
@@ -124,10 +128,10 @@ export default function App() {
       try {
         const recentMessages = messages.slice(-3);
         const queryText = recentMessages.map((m: any) => {
-            const text = typeof m.content === "string" 
-                ? m.content 
-                : m.content.find((p: any) => p.type === "text")?.text || "";
-            return `${m.role === 'user' ? 'User' : 'Frank'}: ${text}`;
+          const text = typeof m.content === "string"
+            ? m.content
+            : m.content.find((p: any) => p.type === "text")?.text || "";
+          return `${m.role === 'user' ? 'User' : 'Frank'}: ${text}`;
         }).join('\n');
 
         const queue: any[] = [];
@@ -150,7 +154,7 @@ export default function App() {
           // This mathematically prevents the "object already disposed" crash.
           if (abortSignal.aborted) {
             console.warn("Run aborted by UI. Halting generator.");
-            break; 
+            break;
           }
 
           if (queue.length > 0) {
@@ -164,14 +168,14 @@ export default function App() {
             } else if (msg.delta !== undefined) {
               displayedText += msg.delta;
               tokenCount++;
-              
+
               // FIX: Direct DOM manipulation prevents the React Re-render Storm
               const currentTps = Math.round((tokenCount / ((performance.now() - startTime) / 1000)) * 10) / 10;
               const currentCtx = Math.min(100, (displayedText.length / 8192) * 100);
-              
+
               const tpsEl = document.getElementById('hud-tps');
               if (tpsEl) tpsEl.innerText = `${currentTps} T/s`;
-              
+
               const ctxEl = document.getElementById('hud-context');
               if (ctxEl) ctxEl.style.width = `${currentCtx}%`;
 
@@ -182,14 +186,14 @@ export default function App() {
           }
         }
         setActiveProgressCallback(null);
-        
+
         // Only yield errors if the stream is still alive
         if (error && !abortSignal.aborted) {
-            yield { content: [{ type: "text", text: `System error: ${error.message || error}` }] };
+          yield { content: [{ type: "text", text: `System error: ${error.message || error}` }] };
         }
       } catch (err: any) {
         if (!abortSignal?.aborted) {
-            yield { content: [{ type: "text", text: `System error: ${err.message || err}` }] };
+          yield { content: [{ type: "text", text: `System error: ${err.message || err}` }] };
         }
       }
     }

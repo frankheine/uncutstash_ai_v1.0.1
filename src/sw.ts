@@ -84,12 +84,10 @@ const OPFSCache = {
         const handle = await root.getFileHandle(chunkName, { create: true });
         const blob = new Blob(bufferChunks as any);
 
-        // @ts-ignore
-        const accessHandle = await handle.createSyncAccessHandle();
-        const arrayBuf = await blob.arrayBuffer();
-        accessHandle.write(new Uint8Array(arrayBuf));
-        accessHandle.flush();
-        accessHandle.close();
+        // FIX: Use createWritable() for Service Workers. SyncAccessHandle is illegal here.
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
     }
 };
 

@@ -2,7 +2,13 @@ import { pipeline, env } from '@huggingface/transformers';
 
 // Enable remote model fetching when local files aren't available
 // Force WASM execution binaries to resolve via public CDN
-env.backends.onnx.wasm!.wasmPaths = '/wasm/';
+// Explicitly map the files so ONNX never requests the missing .jsep.wasm file
+env.backends.onnx.wasm!.wasmPaths = {
+    'ort-wasm.wasm': self.location.origin + '/wasm/ort-wasm.wasm',
+    'ort-wasm-simd.wasm': self.location.origin + '/wasm/ort-wasm-simd.wasm',
+    'ort-wasm-threaded.wasm': self.location.origin + '/wasm/ort-wasm-threaded.wasm',
+    'ort-wasm-simd-threaded.wasm': self.location.origin + '/wasm/ort-wasm-simd-threaded.wasm'
+};
 // Disable ONNX multi-threading so it doesn't spawn sub-blob workers that violate Vite's MIME rules
 env.backends.onnx.wasm!.numThreads = 1;
 env.allowRemoteModels = true;
@@ -28,9 +34,10 @@ self.onmessage = async (event: MessageEvent) => {
                 // Force CPU: reranker only processes top-10 candidates and CPU is
                 // fast enough. WebGPU is reserved exclusively for the inference worker
                 // to prevent [Invalid ShaderModule] shader collisions across workers.
-                initPromise = pipeline('text-classification', 'Xenova/bge-reranker-v2-m3/', {
+                initPromise = pipeline('text-classification', 'Xenova/bge-reranker-v2-m3', {
                     device: 'wasm',
                     quantized: true,
+                    local_files_only: true, // Enforces the air-gap safely
                     progress_callback: (data: any) => {
                         if (data.status === 'progress' && typeof data.progress === 'number') {
                             replyPort.postMessage({ taskId, status: 'progress', log: `Loading Cross-Encoder Weights: ${Math.round(data.progress)}%` });
