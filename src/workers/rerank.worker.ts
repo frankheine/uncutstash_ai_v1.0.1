@@ -7,8 +7,11 @@ env.backends.onnx.wasm!.wasmPaths = {
     'ort-wasm.wasm': self.location.origin + '/wasm/ort-wasm.wasm',
     'ort-wasm-simd.wasm': self.location.origin + '/wasm/ort-wasm-simd.wasm',
     'ort-wasm-threaded.wasm': self.location.origin + '/wasm/ort-wasm-threaded.wasm',
-    'ort-wasm-simd-threaded.wasm': self.location.origin + '/wasm/ort-wasm-simd-threaded.wasm'
+    'ort-wasm-simd-threaded.wasm': self.location.origin + '/wasm/ort-wasm-simd-threaded.wasm',
+    'ort-wasm-simd-threaded.jsep.mjs': self.location.origin + '/wasm/ort-wasm-simd-threaded.jsep.mjs',
+    'ort-wasm-simd-threaded.jsep.wasm': self.location.origin + '/wasm/ort-wasm-simd-threaded.jsep.wasm'
 };
+
 // Disable ONNX multi-threading so it doesn't spawn sub-blob workers that violate Vite's MIME rules
 env.backends.onnx.wasm!.numThreads = 1;
 env.allowRemoteModels = true;
@@ -68,10 +71,12 @@ self.onmessage = async (event: MessageEvent) => {
 
         // Return top 5 optimised matches; status:'success' required for runWorker to resolve
         replyPort.postMessage({ taskId, status: 'success', reranked: reranked.slice(0, 5) });
+        replyPort.close(); // FIX: Prevent half-open IPC memory leak
     } catch (error: any) {
         console.error("[Rerank Worker Error]:", error);
         // status:'error' lets runWorker reject cleanly
         replyPort.postMessage({ taskId, status: 'error', message: error.message });
+        replyPort.close(); // FIX: Prevent half-open IPC memory leak
         initPromise = null;
     }
 };

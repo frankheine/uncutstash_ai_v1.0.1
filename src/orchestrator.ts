@@ -1,6 +1,6 @@
 // src/orchestrator.ts
 import { StateGraph, START, END, Annotation } from "@langchain/langgraph";
-import { getWorkers, runWorker, WorkerType } from "./rag/pipeline";
+import { getWorkers, runWorker, WorkerType, portManager } from "./rag/pipeline";
 import { ragCache } from "./rag/cache";
 import { runDataLifecycleManager } from "./storage";
 import localforage from "localforage";
@@ -20,21 +20,36 @@ export function setActiveProgressCallback(cb: ProgressCallback | null) {
     activeProgressCallback = cb;
 }
 
-let networkChannel: MessageChannel | null = null;
-
-export function getNetworkPort(): MessagePort {
-    if (!networkChannel) {
-        networkChannel = new MessageChannel();
-        const networkWorker = (getWorkers as any).getNetwork();
-        networkWorker.postMessage({ type: 'INIT_PORT' }, [networkChannel.port2]);
-    }
-    return networkChannel.port1;
-}
-
 function getLatestQuestion(fullQuery: string): string {
     const lines = fullQuery.split('\n');
     const lastLine = lines[lines.length - 1];
     return lastLine.replace(/^User:\s*/i, '').trim();
+}
+
+// PHASE 1 FIX: AsyncIterable Consumer for Zero-Retention Streaming
+class NetworkStreamConsumer implements AsyncIterable<any> {
+    private queue: any[] = [];
+    private resolver: ((v: any) => void) | null = null;
+
+    constructor(private port: MessagePort) {
+        this.port.onmessage = (e) => {
+            if (this.resolver) {
+                this.resolver(e.data);
+                this.resolver = null;
+            } else {
+                this.queue.push(e.data);
+            }
+        };
+    }
+
+    async *[Symbol.asyncIterator]() {
+        while (true) {
+            const msg = this.queue.shift() || await new Promise(r => this.resolver = r);
+            if (msg.status === 'success') break;
+            if (msg.status === 'error') throw new Error(msg.message);
+            if (msg.status === 'chunk') yield msg.data;
+        }
+    }
 }
 
 async function retrieveNode(state: typeof GraphState.State) {
@@ -47,6 +62,25 @@ async function retrieveNode(state: typeof GraphState.State) {
     };
 
     try {
+        // FIX: Flush Deferred Staging Memory BEFORE WebGPU mounts
+        try {
+            const root = await navigator.storage.getDirectory();
+            const fileHandle = await root.getFileHandle('staging_memory.json');
+            const file = await fileHandle.getFile();
+            const text = await file.text();
+            if (text) {
+                notify('🧠 Vectorizing deferred memories...');
+                const logs = JSON.parse(text);
+                for (const log of logs) {
+                    const { embedding } = await runWorker<any>('embed', { text: log });
+                    await runWorker<any>('retrieve', { action: 'insert', text: log, embedding });
+                }
+                const writable = await (fileHandle as any).createWritable();
+                await writable.write(""); // Wipe staging
+                await writable.close();
+            }
+        } catch (e) { /* No staging file exists yet, ignore */ }
+
         const cachedContext = ragCache.lookup(actualQuestion);
         if (cachedContext) {
             notify('⚡ Prefix cache hit — bypassing vector retrieval.');
@@ -88,7 +122,6 @@ async function retrieveNode(state: typeof GraphState.State) {
     }
 }
 
-// 2. UPDATE THE GENERATE NODE (The Real-Time RAM Flush)
 async function generateNode(state: typeof GraphState.State) {
     console.log("--- GENERATE NODE ---");
 
@@ -119,12 +152,11 @@ CRITICAL DIRECTIVE: If the user asks about current events, real-time data, or as
                 systemPrompt
             }, (msg) => {
                 if (activeProgressCallback) activeProgressCallback(msg);
-            });
+            }, 180000); // FIX: 3-minute timeout to allow for initial WebGPU shader compilation
 
             return { answer: response.text };
 
         } catch (error: any) {
-            // THIS IS THE CATCH BLOCK THAT WAS MISSING
             console.error("Worker Execution Failed:", error);
             const errorMessage = error.message || String(error);
 
@@ -140,18 +172,27 @@ CRITICAL DIRECTIVE: If the user asks about current events, real-time data, or as
 }
 
 async function memorizeNode(state: typeof GraphState.State) {
-    console.log("--- MEMORIZE NODE ---");
+    console.log("--- MEMORIZE NODE (DEFERRED) ---");
     try {
         const actualQuestion = getLatestQuestion(state.query);
         const memoryText = `User: ${actualQuestion}\nFrank: ${state.answer}`;
 
-        const { embedding } = await runWorker<any>('embed', { text: memoryText });
-        await runWorker<any>('retrieve', { action: 'insert', text: memoryText, embedding });
+        // FIX: Defer embedding to OPFS to prevent ONNX respawn spike during WebGPU hold
+        const root = await navigator.storage.getDirectory();
+        const fileHandle = await root.getFileHandle('staging_memory.json', { create: true });
+        const file = await fileHandle.getFile();
+        const existing = await file.text();
+        const logs = existing ? JSON.parse(existing) : [];
+        logs.push(memoryText);
 
-        console.log("--- MEMORY SAVED ---");
+        const writable = await (fileHandle as any).createWritable();
+        await writable.write(JSON.stringify(logs));
+        await writable.close();
+
+        console.log("--- MEMORY STAGED ---");
         return {};
     } catch (error) {
-        console.error("Memorization Failed:", error);
+        console.error("Staging Failed:", error);
         return {};
     }
 }
@@ -167,51 +208,59 @@ function gradeRetrievalNode(state: typeof GraphState.State) {
 }
 
 async function fallbackSearchNode(state: typeof GraphState.State) {
-    console.log("--- FALLBACK SEARCH NODE (CONTINUOUS INGESTION) ---");
-    if (activeProgressCallback) activeProgressCallback({ status: 'progress', log: '🌐 Initiating deep network search...' });
+    console.log("--- FALLBACK SEARCH NODE (STREAMING INGESTION) ---");
+    if (activeProgressCallback) activeProgressCallback({ status: 'progress', log: '🌐 Initiating deep network stream...' });
 
     try {
         const actualQuestion = getLatestQuestion(state.query);
+        const networkWorker = getWorkers.getNetwork();
 
-        // 1. Let the search run for up to 30 seconds
-        const { results } = await runWorker<any>('network', {
+        const channel = new MessageChannel();
+        portManager.register(channel.port1);
+
+        const consumer = new NetworkStreamConsumer(channel.port1);
+
+        networkWorker.postMessage({
             action: 'SEARCH',
-            query: actualQuestion
-        }, undefined, 30000);
+            query: actualQuestion,
+            taskId: 'stream'
+        }, [channel.port2]);
 
-        if (!results || results.length === 0) {
+        let immediateContext = "";
+        let chunkCount = 0;
+
+        // PHASE 1 FIX: Process chunks one by one, dropping raw data immediately
+        for await (const chunk of consumer) {
+            if (chunk === "No external data found.") continue;
+
+            try {
+                if (activeProgressCallback) activeProgressCallback({ status: 'progress', log: `🧠 Embedding & Storing chunk ${chunkCount + 1}...` });
+                const { embedding } = await runWorker<any>('embed', { text: chunk });
+                await runWorker<any>('retrieve', { action: 'insert', text: chunk, embedding });
+            } catch (embedErr) {
+                console.warn("Failed to embed chunk, skipping Vector DB insert...", embedErr);
+            }
+
+            if (chunkCount < 2) {
+                immediateContext += chunk + "\n\n";
+            }
+            chunkCount++;
+        }
+
+        channel.port1.close();
+        portManager.unregister(channel.port1);
+
+        if (chunkCount === 0) {
             if (activeProgressCallback) activeProgressCallback({ status: 'progress', log: '⚠️ No external data found.' });
             return { context: state.context, requiresFallback: false };
         }
 
-        let immediateContext = "";
-
-        // 2. THE USER'S PARALLEL FLUSH PROTOCOL
-        // Cycle through the data, embed it, log it to the Vector DB, and clear it from RAM.
-        // 2. THE USER'S PARALLEL FLUSH PROTOCOL
-        for (let i = 0; i < results.length; i++) {
-            const chunk = results[i];
-
-            try {
-                if (activeProgressCallback) activeProgressCallback({ status: 'progress', log: `🧠 Embedding & Storing chunk ${i + 1}/${results.length}...` });
-                // Send to Embedding Worker
-                const { embedding } = await runWorker<any>('embed', { text: chunk });
-                // Flush to Vector DB
-                await runWorker<any>('retrieve', { action: 'insert', text: chunk, embedding });
-            } catch (embedErr) {
-                // FIX: If embedding fails (e.g. missing tokenizer.json), log it but DO NOT crash.
-                console.warn("Failed to embed chunk, skipping Vector DB insert...", embedErr);
-            }
-
-            // Always keep the top 2 chunks in hot RAM so the AI can answer the immediate question
-            if (i < 2) {
-                immediateContext += chunk + "\n\n";
-            }
-        }
-
         if (activeProgressCallback) activeProgressCallback({ status: 'progress', log: '✅ Search complete. Data flushed to Vector DB.' });
 
-        return { context: `${state.context}\n\n[Live Web Data]:\n${immediateContext}`, requiresFallback: false };
+        // FIX: Sanitize old context to prevent infinite bloat
+        const cleanContext = state.context ? state.context.replace(/\[Live Web Data\]:[\s\S]*?(?=\n\n|$)/g, '').trim() : "";
+
+        return { context: `${cleanContext}\n\n[Live Web Data]:\n${immediateContext}`, requiresFallback: false };
     } catch (e) {
         console.error("Network Worker Search Failed:", e);
         if (activeProgressCallback) activeProgressCallback({ status: 'progress', log: '⚠️ Web search failed. Relying on Vector DB.' });

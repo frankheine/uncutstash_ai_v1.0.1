@@ -245,7 +245,7 @@ export default function App() {
           )}
 
           <div className="absolute top-4 right-4 z-50 flex flex-col gap-2 items-end">
-            <ModelSelector isBooting={isBooting} onModelChange={(target) => {
+            <ModelSelector targetModel={targetModel} isBooting={isBooting} onModelChange={(target) => {
               bootLockRef.current = false;
               useSovereignStore.getState().setModel(target);
             }} />

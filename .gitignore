@@ -33,7 +33,7 @@ codebase*
 *.sw?
 dynamic*
 build_wasm.ps1
-
+graphify*
 .agents/rules/uncutstash-si.md
 .playwright*
 check-screenshot.png
@@ -42,7 +42,7 @@ scripts*
 .playwright_cache
 agent_checkpoint*.png
 uncutstash_ai_v1.0.1/
-repomix-output.xml
+repomix*
 git-filter-repo.py
 git_search.txt
 codebase*

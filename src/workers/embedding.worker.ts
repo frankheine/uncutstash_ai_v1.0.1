@@ -9,8 +9,11 @@ env.backends.onnx.wasm!.wasmPaths = {
     'ort-wasm.wasm': self.location.origin + '/wasm/ort-wasm.wasm',
     'ort-wasm-simd.wasm': self.location.origin + '/wasm/ort-wasm-simd.wasm',
     'ort-wasm-threaded.wasm': self.location.origin + '/wasm/ort-wasm-threaded.wasm',
-    'ort-wasm-simd-threaded.wasm': self.location.origin + '/wasm/ort-wasm-simd-threaded.wasm'
+    'ort-wasm-simd-threaded.wasm': self.location.origin + '/wasm/ort-wasm-simd-threaded.wasm',
+    'ort-wasm-simd-threaded.jsep.mjs': self.location.origin + '/wasm/ort-wasm-simd-threaded.jsep.mjs',
+    'ort-wasm-simd-threaded.jsep.wasm': self.location.origin + '/wasm/ort-wasm-simd-threaded.jsep.wasm'
 };
+
 env.backends.onnx.wasm!.numThreads = 1;
 env.backends.onnx.wasm!.simd = false;
 env.backends.onnx.wasm!.proxy = false;
@@ -50,6 +53,7 @@ self.onmessage = async (event: MessageEvent) => {
 
         if (action === 'WAKEUP' || text === undefined || text === null) {
             replyPort.postMessage({ taskId, status: 'success', embedding: [] });
+            // DO NOT close the port here. The background progress_callback needs it to report loading status!
             return;
         }
 
@@ -57,10 +61,12 @@ self.onmessage = async (event: MessageEvent) => {
         const output = await extractor(text, { pooling: 'mean', normalize: true });
         const embedding = Array.from(output.data);
         replyPort.postMessage({ taskId, status: 'success', embedding });
+        replyPort.close(); // FIX: Prevent half-open IPC memory leak
 
     } catch (error: any) {
         console.error("[Embedding Worker Error]:", error);
         initPromise = null;
         replyPort.postMessage({ taskId, status: 'error', message: `Embedding error: ${error.message}` });
+        replyPort.close(); // FIX: Prevent half-open IPC memory leak
     }
 };

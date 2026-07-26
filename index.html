@@ -10,7 +10,15 @@
   <link rel="UNCUTstash_icon" href="/logos/UNCUTstash_icon_120.png" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#000000" />
+<meta name="theme-color" content="#000000" />
+
+  <!-- SOVEREIGN ZERO-TRUST DIODE CSP -->
+  <meta http-equiv="Content-Security-Policy" 
+     content="default-src 'self'; 
+              script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; 
+              style-src 'self' 'unsafe-inline';
+              connect-src 'self' ws://localhost:* wss://localhost:* https://corsproxy.io; 
+              worker-src 'self' blob:;">
 
   <!-- CRITICAL FIX: Updated to modern PWA standard to clear console warnings -->
   <link rel="manifest" href="/manifest.json" />

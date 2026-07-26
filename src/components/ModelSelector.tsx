@@ -9,14 +9,16 @@ export const getModelCatalog = () => [
 ];
 
 interface ModelSelectorProps {
+    targetModel: string;
     onModelChange: (target: string) => void;
     isBooting: boolean;
 }
 
-export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isBooting }) => {
+export const ModelSelector: React.FC<ModelSelectorProps> = ({ targetModel, onModelChange, isBooting }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [selectedIdx, setSelectedIdx] = useState(0);
     const catalog = getModelCatalog();
+    // FIX: Derive the selected index dynamically from the global state
+    const selectedIdx = Math.max(0, catalog.findIndex(c => c.targetModel === targetModel));
 
     return (
         <div className="relative z-50 flex flex-col items-end">
@@ -44,7 +46,6 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, isB
                             <button
                                 key={idx}
                                 onClick={() => {
-                                    setSelectedIdx(idx);
                                     onModelChange(pair.targetModel);
                                     setIsOpen(false);
                                 }}

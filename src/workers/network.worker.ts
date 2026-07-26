@@ -3,57 +3,71 @@ self.addEventListener("message", async (e: MessageEvent) => {
   const { action, query, taskId } = e.data;
   const replyPort = e.ports[0];
 
-  if (!replyPort) {
-    console.error("[Network Worker] No reply port provided.");
-    return;
-  }
+  if (!replyPort) return;
 
   try {
     if (action === "SEARCH") {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-      // 1. Target URL (No ?q= in the URL, because it goes in the POST body)
+      // 1. Target URL
       const targetUrl = `https://lite.duckduckgo.com/lite/`;
 
-      // 2. The CORS Proxy Wrapper
-      const searchUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+      // 2. Proxy Fallbacks to prevent 403 Forbidden errors
+      const proxies = [
+        `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
+        `https://proxy.corsfix.com/?${encodeURIComponent(targetUrl)}`
+      ];
 
-      // 3. The CORRECTED fetch call (All options inside one object)
-      const response = await fetch(searchUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `q=${encodeURIComponent(query)}`,
-        signal: controller.signal
-      });
+      let response: Response | null = null; // FIX: Explicitly type as Response | null
+      for (const proxyUrl of proxies) {
+        try {
+          response = await fetch(proxyUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `q=${encodeURIComponent(query)}`,
+            signal: controller.signal
+          });
+          if (response.ok) break; // Success, exit the loop
+        } catch (e) {
+          console.warn(`[Network Worker] Proxy failed: ${proxyUrl}`);
+        }
+      }
 
       clearTimeout(timeoutId);
 
-      if (!response.ok) throw new Error(`Search failed: ${response.status}`);
+      if (!response || !response.ok) {
+        throw new Error(`Search failed: All proxies exhausted or returned 403/500.`);
+      }
 
-      // 4. Parse the HTML (Since DDG Lite returns HTML, not JSON)
+      // Parse the HTML (Since DDG Lite returns HTML, not JSON)
       const html = await response.text();
 
       // Basic Regex to extract the text snippets from DDG Lite HTML inside a Web Worker
       const snippetRegex = /<td class='result-snippet'>([\s\S]*?)<\/td>/g;
       let match;
-      let resultsArray: string[] = [];
+      let found = false;
 
-      while ((match = snippetRegex.exec(html)) !== null && resultsArray.length < 5) {
-        // Strip inner HTML tags to get clean text
+      // PHASE 1 FIX: True Streaming. Send chunks immediately, do not hold in an array.
+      while ((match = snippetRegex.exec(html)) !== null) {
         const cleanText = match[1].replace(/<[^>]*>?/gm, '').trim();
-        if (cleanText) resultsArray.push(cleanText);
+        if (cleanText) {
+          found = true;
+          replyPort.postMessage({ taskId, status: 'chunk', data: cleanText });
+        }
       }
 
-      if (resultsArray.length === 0) {
-        resultsArray.push("No external data found.");
+      if (!found) {
+        replyPort.postMessage({ taskId, status: 'chunk', data: "No external data found." });
       }
 
-      replyPort.postMessage({ taskId, status: "success", results: resultsArray });
+      replyPort.postMessage({ taskId, status: "success" });
+      replyPort.close(); // FIX: Prevent half-open IPC memory leak
     } else {
       replyPort.postMessage({ taskId, status: "error", message: "Unknown action type" });
+      replyPort.close(); // FIX: Prevent half-open IPC memory leak
     }
   } catch (error: any) {
     replyPort.postMessage({ taskId, status: "error", message: error.message });
+    replyPort.close(); // FIX: Prevent half-open IPC memory leak
   }
 });

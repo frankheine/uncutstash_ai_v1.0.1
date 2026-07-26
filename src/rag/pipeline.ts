@@ -42,6 +42,28 @@ let networkWorker: Worker | null = null;
 
 let currentEngine: MLCEngine | null = null;
 
+// PHASE 1 FIX: PortManager Singleton to prevent IPC Memory Leaks
+class PortManager {
+    private activePorts: Set<MessagePort> = new Set();
+    
+    register(port: MessagePort) {
+        this.activePorts.add(port);
+    }
+    
+    unregister(port: MessagePort) {
+        this.activePorts.delete(port);
+    }
+
+    closeAll() {
+        this.activePorts.forEach(port => {
+            try { port.close(); } catch (e) {}
+        });
+        this.activePorts.clear();
+    }
+}
+
+export const portManager = new PortManager();
+
 export const getWorkers = {
     getEmbed: () => {
         if (!embedWorker) embedWorker = new Worker(new URL('../workers/embedding.worker.ts', import.meta.url), { type: 'module' });
@@ -63,9 +85,9 @@ export const getWorkers = {
         if (!networkWorker) networkWorker = new Worker(new URL('../workers/network.worker.ts', import.meta.url), { type: 'module' });
         return networkWorker;
     },
-    // ADD THIS: The Real-Time RAM Flush
     killMemoryWorkers: () => {
-        console.log("[Pipeline] 🧹 Flushing RAM: Terminating Embedding & Network workers...");
+        console.log("[Pipeline] 🧹 Flushing RAM: Closing ports and terminating workers...");
+        portManager.closeAll(); // Explicitly close all IPC channels first
         if (embedWorker) { embedWorker.terminate(); embedWorker = null; }
         if (retrieveWorker) { retrieveWorker.terminate(); retrieveWorker = null; }
         if (rerankWorker) { rerankWorker.terminate(); rerankWorker = null; }
@@ -288,12 +310,17 @@ export function runWorker<T>(
         }
 
         const channel = new MessageChannel();
+        
+        // PHASE 1 FIX: Register port to prevent leaks
+        portManager.register(channel.port1);
+
         const handleResponse = (e: MessageEvent) => {
             if (e.data.taskId === taskId) {
                 if (e.data.status === 'success') {
                     clearTimeout(timeoutId);
                     channel.port1.removeEventListener('message', handleResponse);
                     channel.port1.close();
+                    portManager.unregister(channel.port1);
                     resolve(e.data as T);
                 } else if (e.data.status === 'log' && onProgress) {
                     onProgress(e.data.message);
@@ -303,6 +330,7 @@ export function runWorker<T>(
                     clearTimeout(timeoutId);
                     channel.port1.removeEventListener('message', handleResponse);
                     channel.port1.close();
+                    portManager.unregister(channel.port1);
                     reject(new Error(e.data.message));
                 }
             }
@@ -310,6 +338,7 @@ export function runWorker<T>(
 
         channel.port1.addEventListener('message', handleResponse);
         channel.port1.start();
+        portManager.register(channel.port1);
         worker.postMessage({ taskId, ...payload }, [channel.port2]);
     });
 }
