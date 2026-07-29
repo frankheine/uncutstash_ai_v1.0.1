@@ -26,6 +26,16 @@ function getLatestQuestion(fullQuery: string): string {
     return lastLine.replace(/^User:\s*/i, '').trim();
 }
 
+// --- SOTA MACRO-TASK YIELD (Hardware Breathing) ---
+// Yields the main thread to the OS Garbage Collector and GPU without arbitrary timeouts.
+function yieldToOS(): Promise<void> {
+    return new Promise((resolve) => {
+        const channel = new MessageChannel();
+        channel.port1.onmessage = () => resolve();
+        channel.port2.postMessage(null);
+    });
+}
+
 // PHASE 1 FIX: AsyncIterable Consumer for Zero-Retention Streaming
 class NetworkStreamConsumer implements AsyncIterable<any> {
     private queue: any[] = [];
@@ -117,7 +127,8 @@ async function retrieveNode(state: typeof GraphState.State) {
         const { reranked } = await runWorker<any>(
             'rerank',
             { query: actualQuestion, candidates },
-            notify
+            notify,
+            180000
         );
 
         const topScore = reranked.length > 0 ? reranked[0].rerankScore : 0;

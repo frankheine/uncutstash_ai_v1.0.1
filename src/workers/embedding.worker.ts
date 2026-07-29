@@ -14,8 +14,10 @@ env.backends.onnx.wasm!.wasmPaths = {
     'ort-wasm-simd-threaded.jsep.wasm': self.location.origin + '/wasm/ort-wasm-simd-threaded.jsep.wasm'
 };
 
-env.backends.onnx.wasm!.numThreads = 1;
-env.backends.onnx.wasm!.simd = false;
+// UNLEASH MULTI-THREADING & SIMD
+const availableCores = navigator.hardwareConcurrency || 4;
+env.backends.onnx.wasm!.numThreads = Math.max(1, availableCores - 1);
+env.backends.onnx.wasm!.simd = true;
 env.backends.onnx.wasm!.proxy = false;
 
 let extractor: any = null;

@@ -31,6 +31,6 @@
   },
   "include": [
     "src",
-    "test-harness.cjs"
+    "public/tests/test-harness.cjs"
   ]
 }
